@@ -115,4 +115,24 @@ export class OllamaService {
       return false;
     }
   }
+
+  /**
+   * Check if Ollama service is available (simpler version for status checks)
+   * 
+   * @returns True if service is available, false otherwise
+   */
+  async isAvailable(): Promise<boolean> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(`${this.ollamaBaseUrl}/api/version`, {
+          timeout: 5000
+        })
+      );
+      
+      return response.status === 200;
+    } catch (error: any) {
+      this.logger.warn(`Ollama availability check failed: ${error.message}`);
+      return false;
+    }
+  }
 }
