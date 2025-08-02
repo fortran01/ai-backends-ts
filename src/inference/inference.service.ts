@@ -32,7 +32,7 @@ export class InferenceService {
    * @param request - Generation request with prompt
    * @returns Generated text response
    */
-  async generateText(request: GenerateRequestDto): Promise<GenerateResponseDto> {
+  public async generateText(request: GenerateRequestDto): Promise<GenerateResponseDto> {
     return this.ollamaService.generateText(request);
   }
 
@@ -43,7 +43,7 @@ export class InferenceService {
    * @returns Generated text response with security analysis
    * @throws BadRequestException if prompt is deemed too risky
    */
-  async generateTextSecure(request: GenerateRequestDto): Promise<SecureGenerateResponseDto> {
+  public async generateTextSecure(request: GenerateRequestDto): Promise<SecureGenerateResponseDto> {
     // Perform security analysis
     const securityAnalysis = this.securityService.analyzePrompt(request);
     
@@ -96,7 +96,7 @@ export class InferenceService {
    * @param request - Classification request with Iris features
    * @returns Comprehensive classification results
    */
-  async classifyIris(request: ClassifyRequestDto): Promise<ClassifyResponseDto> {
+  public async classifyIris(request: ClassifyRequestDto): Promise<ClassifyResponseDto> {
     return this.onnxService.classifyIris(request);
   }
 
@@ -105,7 +105,7 @@ export class InferenceService {
    * 
    * @returns Service status information
    */
-  async getServiceStatus(): Promise<Record<string, any>> {
+  public async getServiceStatus(): Promise<Record<string, unknown>> {
     const [ollamaAvailable, onnxReady] = await Promise.all([
       this.ollamaService.isServiceAvailable(),
       Promise.resolve(this.onnxService.isModelReady())

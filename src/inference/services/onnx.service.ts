@@ -21,11 +21,12 @@ export class OnnxService implements OnModuleInit {
    * 
    * Following the coding guidelines: Lazy loading with proper error handling
    */
-  async onModuleInit(): Promise<void> {
+  public async onModuleInit(): Promise<void> {
     try {
       await this.loadModel();
-    } catch (error: any) {
-      this.logger.error(`Failed to initialize ONNX model: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to initialize ONNX model: ${errorMessage}`, error instanceof Error ? error.stack : undefined);
       // Don't throw here - allow the service to start and handle errors per-request
     }
   }
@@ -62,9 +63,10 @@ export class OnnxService implements OnModuleInit {
       this.logger.log(`Model input names: ${this.session.inputNames.join(', ')}`);
       this.logger.log(`Model output names: ${this.session.outputNames.join(', ')}`);
       
-    } catch (error: any) {
-      this.logger.error(`Failed to load ONNX model: ${error.message}`, error.stack);
-      throw new Error(`Model loading failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to load ONNX model: ${errorMessage}`, error instanceof Error ? error.stack : undefined);
+      throw new Error(`Model loading failed: ${errorMessage}`);
     }
   }
 
@@ -75,12 +77,12 @@ export class OnnxService implements OnModuleInit {
    * @returns Comprehensive classification results with probabilities and metadata
    * @throws HttpException for model errors or invalid inputs
    */
-  async classifyIris(request: ClassifyRequestDto): Promise<ClassifyResponseDto> {
+  public async classifyIris(request: ClassifyRequestDto): Promise<ClassifyResponseDto> {
     // Ensure model is loaded
     if (!this.session) {
       try {
         await this.loadModel();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw new HttpException({
           message: 'ONNX model is not available',
           error: 'Model Loading Failed',
@@ -150,12 +152,13 @@ export class OnnxService implements OnModuleInit {
         }
       };
       
-    } catch (error: any) {
-      this.logger.error(`ONNX inference failed: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`ONNX inference failed: ${errorMessage}`, error instanceof Error ? error.stack : undefined);
       
       throw new HttpException({
         message: 'Model inference failed',
-        error: error.message || 'Internal Server Error',
+        error: errorMessage ?? 'Internal Server Error',
         statusCode: 500
       }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -166,7 +169,7 @@ export class OnnxService implements OnModuleInit {
    * 
    * @returns True if model is ready, false otherwise
    */
-  isModelReady(): boolean {
+  public isModelReady(): boolean {
     return this.session !== null;
   }
 
@@ -175,12 +178,12 @@ export class OnnxService implements OnModuleInit {
    * 
    * @returns Model information object
    */
-  getModelInfo(): Record<string, any> {
+  public getModelInfo(): Record<string, unknown> {
     return {
       loaded: this.isModelReady(),
       path: this.modelPath,
-      inputNames: this.session?.inputNames || [],
-      outputNames: this.session?.outputNames || [],
+      inputNames: this.session?.inputNames ?? [],
+      outputNames: this.session?.outputNames ?? [],
       classNames: this.classNames,
       format: 'ONNX'
     };

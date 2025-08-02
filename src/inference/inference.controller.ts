@@ -80,7 +80,7 @@ export class InferenceController {
     description: 'Ollama service unavailable or model not found' 
   })
   @UsePipes(new ZodValidationPipe(GenerateRequestSchema))
-  async generateText(@Body() request: GenerateRequestDto): Promise<any> {
+  public async generateText(@Body() request: GenerateRequestDto): Promise<GenerateResponseDtoClass> {
     return this.inferenceService.generateText(request);
   }
 
@@ -128,7 +128,7 @@ export class InferenceController {
     description: 'Ollama service unavailable or model not found' 
   })
   @UsePipes(new ZodValidationPipe(GenerateRequestSchema))
-  async generateTextSecure(@Body() request: GenerateRequestDto): Promise<any> {
+  public async generateTextSecure(@Body() request: GenerateRequestDto): Promise<SecureGenerateResponseDtoClass> {
     return this.inferenceService.generateTextSecure(request);
   }
 
@@ -191,7 +191,7 @@ export class InferenceController {
     description: 'ONNX model not available or inference failed' 
   })
   @UsePipes(new ZodValidationPipe(ClassifyRequestSchema))
-  async classifyIris(@Body() request: ClassifyRequestDto): Promise<any> {
+  public async classifyIris(@Body() request: ClassifyRequestDto): Promise<ClassifyResponseDtoClass> {
     return this.inferenceService.classifyIris(request);
   }
 
@@ -239,7 +239,7 @@ export class InferenceController {
       }
     }
   })
-  async getStatus(): Promise<any> {
+  public async getStatus(): Promise<Record<string, unknown>> {
     return this.inferenceService.getServiceStatus();
   }
 }

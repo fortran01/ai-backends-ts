@@ -471,8 +471,8 @@ describe('InferenceController', () => {
       };
 
       const httpError = {
-        getStatus: () => HttpStatus.SERVICE_UNAVAILABLE,
-        getResponse: () => ({
+        getStatus: (): HttpStatus => HttpStatus.SERVICE_UNAVAILABLE,
+        getResponse: (): { message: string; error: string; statusCode: number } => ({
           message: 'ONNX model is not available',
           error: 'Model Loading Failed',
           statusCode: 503

@@ -24,7 +24,7 @@ export class OllamaService {
    * @returns Generated text response from the model
    * @throws HttpException for API errors, timeouts, or connection issues
    */
-  async generateText(request: GenerateRequestDto): Promise<GenerateResponseDto> {
+  public async generateText(request: GenerateRequestDto): Promise<GenerateResponseDto> {
     try {
       this.logger.log(`Generating text for prompt: "${request.prompt.substring(0, 50)}..."`);
       
@@ -56,10 +56,13 @@ export class OllamaService {
         done: ollamaResponse.done || true
       };
       
-    } catch (error: any) {
-      this.logger.error(`Ollama API error: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorCode = (error as { code?: string }).code;
+      const errorResponse = (error as { response?: { status?: number } }).response;
+      this.logger.error(`Ollama API error: ${errorMessage}`, error instanceof Error ? error.stack : undefined);
       
-      if (error.code === 'ECONNREFUSED') {
+      if (errorCode === 'ECONNREFUSED') {
         throw new HttpException({
           message: 'Ollama service is not running. Please start Ollama and ensure TinyLlama model is available.',
           error: 'Service Unavailable',
@@ -67,7 +70,7 @@ export class OllamaService {
         }, HttpStatus.SERVICE_UNAVAILABLE);
       }
       
-      if (error.code === 'ENOTFOUND') {
+      if (errorCode === 'ENOTFOUND') {
         throw new HttpException({
           message: 'Could not connect to Ollama service. Please check the service is running on localhost:11434.',
           error: 'Service Unavailable',
@@ -75,7 +78,7 @@ export class OllamaService {
         }, HttpStatus.SERVICE_UNAVAILABLE);
       }
       
-      if (error.response?.status === 404) {
+      if (errorResponse?.status === 404) {
         throw new HttpException({
           message: `Model '${this.modelName}' not found. Please run: ollama pull ${this.modelName}`,
           error: 'Model Not Found',
@@ -85,9 +88,9 @@ export class OllamaService {
       
       throw new HttpException({
         message: 'Text generation failed',
-        error: error.message || 'Internal Server Error',
-        statusCode: error.response?.status || 500
-      }, error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR);
+        error: errorMessage ?? 'Internal Server Error',
+        statusCode: errorResponse?.status ?? 500
+      }, errorResponse?.status ?? HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -96,7 +99,7 @@ export class OllamaService {
    * 
    * @returns True if service is available, false otherwise
    */
-  async isServiceAvailable(): Promise<boolean> {
+  public async isServiceAvailable(): Promise<boolean> {
     try {
       const response = await firstValueFrom(
         this.httpService.get(`${this.ollamaBaseUrl}/api/tags`, {
@@ -105,13 +108,14 @@ export class OllamaService {
       );
       
       const models = response.data.models || [];
-      const hasModel: boolean = models.some((model: any) => 
+      const hasModel: boolean = models.some((model: { name?: string }) => 
         model.name?.includes(this.modelName)
       );
       
       return response.status === 200 && hasModel;
-    } catch (error: any) {
-      this.logger.warn(`Ollama service check failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn(`Ollama service check failed: ${errorMessage}`);
       return false;
     }
   }
@@ -121,7 +125,7 @@ export class OllamaService {
    * 
    * @returns True if service is available, false otherwise
    */
-  async isAvailable(): Promise<boolean> {
+  public async isAvailable(): Promise<boolean> {
     try {
       const response = await firstValueFrom(
         this.httpService.get(`${this.ollamaBaseUrl}/api/version`, {
@@ -130,8 +134,9 @@ export class OllamaService {
       );
       
       return response.status === 200;
-    } catch (error: any) {
-      this.logger.warn(`Ollama availability check failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn(`Ollama availability check failed: ${errorMessage}`);
       return false;
     }
   }

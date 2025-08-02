@@ -45,7 +45,7 @@ export class AppController {
     status: 503, 
     description: 'Service is unhealthy or dependencies are unreachable' 
   })
-  async getHealth(): Promise<Record<string, any>> {
+  public async getHealth(): Promise<Record<string, unknown>> {
     return this.appService.getHealth();
   }
 }

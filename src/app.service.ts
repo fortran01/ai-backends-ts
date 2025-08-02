@@ -18,8 +18,8 @@ export class AppService {
    * @returns Health status object with dependency information
    * @throws HttpException 503 if critical dependencies are unreachable
    */
-  async getHealth(): Promise<Record<string, any>> {
-    const healthData: Record<string, any> = {
+  public async getHealth(): Promise<Record<string, unknown>> {
+    const healthData: Record<string, unknown> = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -35,12 +35,13 @@ export class AppService {
       );
       
       healthData.dependencies.ollama = ollamaResponse.status === 200 ? 'connected' : 'unreachable';
-    } catch (error: any) {
+    } catch (error: unknown) {
       healthData.dependencies.ollama = 'unreachable';
       healthData.status = 'degraded';
       
       // Log the error for monitoring
-      console.warn(`Ollama health check failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`Ollama health check failed: ${errorMessage}`);
     }
 
     // If critical dependencies are down, return 503

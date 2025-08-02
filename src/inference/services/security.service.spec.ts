@@ -134,7 +134,7 @@ describe('SecurityService', () => {
   describe('shouldBlockPrompt', () => {
     it('should block prompts with any detected patterns', () => {
       const detectedPatterns: string[] = ['ignore all instructions'];
-      const riskLevel: 'medium' = 'medium';
+      const riskLevel = 'medium' as const;
 
       const result: boolean = service.shouldBlockPrompt(detectedPatterns, riskLevel);
 
@@ -143,7 +143,7 @@ describe('SecurityService', () => {
 
     it('should block high risk prompts even without patterns', () => {
       const detectedPatterns: string[] = [];
-      const riskLevel: 'high' = 'high';
+      const riskLevel = 'high' as const;
 
       const result: boolean = service.shouldBlockPrompt(detectedPatterns, riskLevel);
 
@@ -152,7 +152,7 @@ describe('SecurityService', () => {
 
     it('should not block safe prompts', () => {
       const detectedPatterns: string[] = [];
-      const riskLevel: 'low' = 'low';
+      const riskLevel = 'low' as const;
 
       const result: boolean = service.shouldBlockPrompt(detectedPatterns, riskLevel);
 
@@ -161,7 +161,7 @@ describe('SecurityService', () => {
 
     it('should not block medium risk without patterns', () => {
       const detectedPatterns: string[] = [];
-      const riskLevel: 'medium' = 'medium';
+      const riskLevel = 'medium' as const;
 
       const result: boolean = service.shouldBlockPrompt(detectedPatterns, riskLevel);
 
