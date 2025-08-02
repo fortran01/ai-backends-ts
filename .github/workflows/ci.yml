@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install ESLint dependencies
+        run: npm install --save-dev eslint @typescript-eslint/eslint-plugin@^7.0.0 @typescript-eslint/parser@^7.0.0 eslint-config-prettier eslint-plugin-prettier prettier
+
       - name: Run linting
         run: npm run lint
 
