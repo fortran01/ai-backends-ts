@@ -1,0 +1,10 @@
+What is machine learning?
+Explain how neural networks work in simple terms
+What are the main types of artificial intelligence?
+How does natural language processing work?
+What is the difference between supervised and unsupervised learning?
+Explain the concept of deep learning
+What are some real-world applications of AI?
+How do recommendation systems work?
+What is computer vision and how is it used?
+Explain the basics of reinforcement learning

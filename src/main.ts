@@ -1,0 +1,40 @@
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
+/**
+ * Bootstrap the NestJS application
+ * 
+ * Following the coding guidelines: Sets up global validation,
+ * Swagger documentation, and starts the server on port 3000
+ */
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(AppModule);
+  
+  // Enable global validation using class-validator
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
+
+  // Setup Swagger/OpenAPI documentation
+  const config = new DocumentBuilder()
+    .setTitle('AI Backends API')
+    .setDescription('TypeScript/NestJS implementation of AI model serving with security demonstrations')
+    .setVersion('1.0')
+    .addTag('inference', 'Model inference endpoints')
+    .addTag('health', 'Health check endpoints')
+    .build();
+  
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
+  const port: number = parseInt(process.env.PORT || '3000', 10);
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`Swagger documentation available at: http://localhost:${port}/api/docs`);
+}
+
+bootstrap();

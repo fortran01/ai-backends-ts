@@ -1,0 +1,11 @@
+prompt,category,difficulty,expected_length
+What is artificial intelligence?,Introduction,Beginner,Short
+Explain how machine learning algorithms learn from data,Technical,Intermediate,Medium
+Describe the architecture of a neural network,Technical,Advanced,Long
+What are the ethical implications of AI in healthcare?,Ethics,Intermediate,Medium
+How do large language models like GPT work?,Technical,Advanced,Long
+What is the difference between AI and machine learning?,Introduction,Beginner,Short
+Explain the concept of overfitting in machine learning,Technical,Intermediate,Medium
+What are some examples of AI bias and how can it be mitigated?,Ethics,Advanced,Long
+How is AI being used in autonomous vehicles?,Application,Intermediate,Medium
+What is the future of artificial intelligence?,General,Beginner,Medium

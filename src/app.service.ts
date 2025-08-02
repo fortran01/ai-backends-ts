@@ -1,0 +1,57 @@
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+
+/**
+ * Application service for core functionality
+ * 
+ * Following the coding guidelines: Implements health checking
+ * with proper error handling and external dependency monitoring
+ */
+@Injectable()
+export class AppService {
+  constructor(private readonly httpService: HttpService) {}
+
+  /**
+   * Perform comprehensive health check including external dependencies
+   * 
+   * @returns Health status object with dependency information
+   * @throws HttpException 503 if critical dependencies are unreachable
+   */
+  async getHealth(): Promise<Record<string, any>> {
+    const healthData: Record<string, any> = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      dependencies: {}
+    };
+
+    try {
+      // Check Ollama API connectivity
+      const ollamaResponse = await firstValueFrom(
+        this.httpService.get('http://localhost:11434/api/tags', {
+          timeout: 5000
+        })
+      );
+      
+      healthData.dependencies.ollama = ollamaResponse.status === 200 ? 'connected' : 'unreachable';
+    } catch (error: any) {
+      healthData.dependencies.ollama = 'unreachable';
+      healthData.status = 'degraded';
+      
+      // Log the error for monitoring
+      console.warn(`Ollama health check failed: ${error.message}`);
+    }
+
+    // If critical dependencies are down, return 503
+    if (healthData.dependencies.ollama === 'unreachable') {
+      throw new HttpException({
+        ...healthData,
+        status: 'unhealthy',
+        message: 'Critical dependencies are unreachable'
+      }, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    return healthData;
+  }
+}
