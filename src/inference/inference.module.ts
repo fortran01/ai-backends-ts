@@ -5,6 +5,8 @@ import { InferenceService } from './inference.service';
 import { OllamaService } from './services/ollama.service';
 import { SecurityService } from './services/security.service';
 import { OnnxService } from './services/onnx.service';
+import { MemoryService } from './services/memory.service';
+import { GrpcService } from './services/grpc.service';
 
 /**
  * Inference module containing all model serving functionality
@@ -25,6 +27,8 @@ import { OnnxService } from './services/onnx.service';
     OllamaService,
     SecurityService,
     OnnxService,
+    MemoryService,
+    GrpcService,
   ],
   exports: [
     InferenceService, // Export for use in other modules if needed

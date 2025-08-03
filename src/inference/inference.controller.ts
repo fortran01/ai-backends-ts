@@ -20,7 +20,11 @@ import {
   GenerateRequestDto,
   GenerateRequestDtoClass,
   GenerateResponseDtoClass,
-  SecureGenerateResponseDtoClass
+  SecureGenerateResponseDtoClass,
+  ChatRequestSchema,
+  ChatRequestDto,
+  ChatRequestDtoClass,
+  ChatResponseDtoClass
 } from './dto/generate.dto';
 import {
   ClassifyRequestSchema,
@@ -28,6 +32,12 @@ import {
   ClassifyRequestDtoClass,
   ClassifyResponseDtoClass
 } from './dto/classify.dto';
+import {
+  PerformanceComparisonRequestSchema,
+  PerformanceComparisonRequestDto,
+  PerformanceComparisonRequestDtoClass,
+  SerializationChallengeResponseDtoClass
+} from './dto/performance.dto';
 
 /**
  * Controller for model inference endpoints
@@ -133,6 +143,63 @@ export class InferenceController {
   }
 
   /**
+   * Stateful chat with conversation memory using LangChain orchestration
+   * 
+   * @param request - Chat request containing prompt and session ID
+   * @returns Chat response with conversation context and memory statistics
+   */
+  @Post('chat')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Stateful chat with conversation memory',
+    description: 'Demonstrates the Model Context Protocol (MCP) with LangChain orchestration. Maintains conversation memory per session, uses prompt templates, and provides context-aware responses.'
+  })
+  @ApiBody({ 
+    type: ChatRequestDtoClass,
+    description: 'Chat request with prompt and session identifier for memory management',
+    examples: {
+      newConversation: {
+        summary: 'Start new conversation',
+        value: { 
+          prompt: 'Hello, can you help me understand machine learning?',
+          session_id: 'user-123-session'
+        }
+      },
+      followUp: {
+        summary: 'Follow-up question',
+        value: { 
+          prompt: 'Can you give me a specific example?',
+          session_id: 'user-123-session'
+        }
+      },
+      contextualQuery: {
+        summary: 'Context-dependent query',
+        value: { 
+          prompt: 'What are the key differences?',
+          session_id: 'user-123-session'
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Chat response generated successfully with conversation context',
+    type: ChatResponseDtoClass
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid input (empty prompt, invalid session ID format, etc.)' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'Ollama service unavailable or memory service error' 
+  })
+  @UsePipes(new ZodValidationPipe(ChatRequestSchema))
+  public async chat(@Body() request: ChatRequestDto): Promise<ChatResponseDtoClass> {
+    return this.inferenceService.chat(request);
+  }
+
+  /**
    * Iris species classification using ONNX model
    * 
    * @param request - Classification request with Iris features
@@ -193,6 +260,195 @@ export class InferenceController {
   @UsePipes(new ZodValidationPipe(ClassifyRequestSchema))
   public async classifyIris(@Body() request: ClassifyRequestDto): Promise<ClassifyResponseDtoClass> {
     return this.inferenceService.classifyIris(request);
+  }
+
+  /**
+   * Iris species classification using gRPC server for high-performance inference
+   * 
+   * @param request - Classification request with Iris features
+   * @returns Classification results from gRPC server with performance metrics
+   */
+  @Post('classify-grpc')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Classify Iris species via gRPC server',
+    description: 'Demonstrates high-performance gRPC communication for model inference. Requires the standalone gRPC server to be running on port 50051.'
+  })
+  @ApiBody({ 
+    type: ClassifyRequestDtoClass,
+    description: 'Iris flower measurements for gRPC-based species prediction',
+    examples: {
+      setosa: {
+        summary: 'Typical Setosa measurements',
+        value: {
+          sepal_length: 5.1,
+          sepal_width: 3.5,
+          petal_length: 1.4,
+          petal_width: 0.2
+        }
+      },
+      versicolor: {
+        summary: 'Typical Versicolor measurements',
+        value: {
+          sepal_length: 7.0,
+          sepal_width: 3.2,
+          petal_length: 4.7,
+          petal_width: 1.4
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'gRPC classification completed successfully',
+    type: ClassifyResponseDtoClass
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid measurements or gRPC request format error' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'gRPC server unavailable. Please start the gRPC server: npm run grpc-server' 
+  })
+  @UsePipes(new ZodValidationPipe(ClassifyRequestSchema))
+  public async classifyIrisViaGrpc(@Body() request: ClassifyRequestDto): Promise<ClassifyResponseDtoClass> {
+    return this.inferenceService.classifyIrisViaGrpc(request);
+  }
+
+  /**
+   * Performance comparison between REST and gRPC protocols
+   * 
+   * @param request - Classification request with performance testing parameters
+   * @returns Detailed performance analysis comparing REST vs gRPC throughput
+   */
+  @Post('classify-benchmark')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Performance comparison: REST vs gRPC',
+    description: 'Benchmarks REST (ONNX direct) vs gRPC inference performance. Runs multiple iterations and provides detailed timing analysis, speedup factors, and throughput metrics.'
+  })
+  @ApiBody({ 
+    type: PerformanceComparisonRequestDtoClass,
+    description: 'Iris measurements with performance testing configuration',
+    examples: {
+      quickTest: {
+        summary: 'Quick performance test (5 iterations)',
+        value: {
+          sepal_length: 5.1,
+          sepal_width: 3.5,
+          petal_length: 1.4,
+          petal_width: 0.2,
+          iterations: 5
+        }
+      },
+      detailedBenchmark: {
+        summary: 'Detailed benchmark (50 iterations)',
+        value: {
+          sepal_length: 6.3,
+          sepal_width: 3.3,
+          petal_length: 6.0,
+          petal_width: 2.5,
+          iterations: 50
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Performance comparison completed successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        iterations: { type: 'number', example: 10 },
+        rest_performance: {
+          type: 'object',
+          properties: {
+            total_time_ms: { type: 'number', example: 45.2 },
+            average_time_ms: { type: 'number', example: 4.52 },
+            fastest_ms: { type: 'number', example: 3.1 },
+            slowest_ms: { type: 'number', example: 6.8 },
+            success_rate: { type: 'number', example: 100 }
+          }
+        },
+        grpc_performance: {
+          type: 'object',
+          properties: {
+            total_time_ms: { type: 'number', example: 28.7 },
+            average_time_ms: { type: 'number', example: 2.87 },
+            fastest_ms: { type: 'number', example: 2.1 },
+            slowest_ms: { type: 'number', example: 4.2 },
+            success_rate: { type: 'number', example: 100 }
+          }
+        },
+        performance_analysis: {
+          type: 'object',
+          properties: {
+            speedup_factor: { type: 'number', example: 1.57 },
+            grpc_faster: { type: 'boolean', example: true },
+            time_saved_ms: { type: 'number', example: 1.65 },
+            throughput_improvement: { type: 'number', example: 57.5 }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid request parameters or iteration count out of range (1-100)' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'One or both services unavailable (ONNX model or gRPC server)' 
+  })
+  @UsePipes(new ZodValidationPipe(PerformanceComparisonRequestSchema))
+  public async performanceComparison(@Body() request: PerformanceComparisonRequestDto): Promise<any> {
+    return this.inferenceService.performanceComparison(request, request.iterations);
+  }
+
+  /**
+   * Serialization challenge demonstration with complex data types
+   * 
+   * @param request - Classification request with Iris features
+   * @returns Classification results with comprehensive serialization demonstrations
+   */
+  @Post('classify-detailed')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'TypeScript serialization challenge demonstration',
+    description: 'Demonstrates handling of complex JavaScript/TypeScript data types in JSON serialization: BigInt, undefined, Buffer, Map, Set, Date, RegExp, functions, and symbols.'
+  })
+  @ApiBody({ 
+    type: ClassifyRequestDtoClass,
+    description: 'Iris measurements for classification with serialization demonstration',
+    examples: {
+      demo: {
+        summary: 'Serialization challenge example',
+        value: {
+          sepal_length: 5.8,
+          sepal_width: 2.7,
+          petal_length: 5.1,
+          petal_width: 1.9
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Classification and serialization demonstration completed',
+    type: SerializationChallengeResponseDtoClass
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid measurements or serialization error' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'ONNX model not available or serialization processing failed' 
+  })
+  @UsePipes(new ZodValidationPipe(ClassifyRequestSchema))
+  public async serializationChallenge(@Body() request: ClassifyRequestDto): Promise<SerializationChallengeResponseDtoClass> {
+    return this.inferenceService.serializationChallenge(request);
   }
 
   /**

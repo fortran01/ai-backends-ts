@@ -72,6 +72,110 @@ export class GenerateResponseDtoClass implements GenerateResponseDto {
   public done!: boolean;
 }
 
+// Chat request schema for stateful conversation
+export const ChatRequestSchema = z.object({
+  prompt: z.string()
+    .min(1, 'Prompt cannot be empty')
+    .max(500, 'Prompt cannot exceed 500 characters')
+    .transform(str => str.trim()),
+  session_id: z.string()
+    .min(1, 'Session ID cannot be empty')
+    .max(100, 'Session ID cannot exceed 100 characters')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Session ID must contain only alphanumeric characters, underscores, and hyphens')
+});
+
+export type ChatRequestDto = z.infer<typeof ChatRequestSchema>;
+
+/**
+ * Request DTO for stateful chat endpoint
+ * 
+ * Used for /api/v1/chat with conversation memory
+ */
+export class ChatRequestDtoClass implements ChatRequestDto {
+  @ApiProperty({
+    description: 'Text prompt for the conversation',
+    example: 'What is machine learning?',
+    minLength: 1,
+    maxLength: 500
+  })
+  public prompt!: string;
+
+  @ApiProperty({
+    description: 'Unique session identifier for conversation memory',
+    example: 'user-123-session',
+    minLength: 1,
+    maxLength: 100,
+    pattern: '^[a-zA-Z0-9_-]+$'
+  })
+  public session_id!: string;
+}
+
+// Chat response schema with conversation memory metrics
+export const ChatResponseSchema = z.object({
+  response: z.string(),
+  model: z.string(),
+  created_at: z.string(),
+  done: z.boolean(),
+  session_id: z.string(),
+  conversation_stats: z.object({
+    message_count: z.number(),
+    memory_size: z.number(),
+    context_length: z.number()
+  })
+});
+
+export type ChatResponseDto = z.infer<typeof ChatResponseSchema>;
+
+/**
+ * Response DTO for stateful chat endpoint with conversation metrics
+ */
+export class ChatResponseDtoClass implements ChatResponseDto {
+  @ApiProperty({
+    description: 'Generated response from the conversation model',
+    example: 'Machine learning is a method of data analysis...'
+  })
+  public response!: string;
+
+  @ApiProperty({
+    description: 'Model used for generation',
+    example: 'tinyllama'
+  })
+  public model!: string;
+
+  @ApiProperty({
+    description: 'Timestamp when response was created',
+    example: '2024-01-15T10:30:00.000Z'
+  })
+  public created_at!: string;
+
+  @ApiProperty({
+    description: 'Whether response generation is complete',
+    example: true
+  })
+  public done!: boolean;
+
+  @ApiProperty({
+    description: 'Session identifier for this conversation',
+    example: 'user-123-session'
+  })
+  public session_id!: string;
+
+  @ApiProperty({
+    description: 'Conversation memory statistics',
+    type: 'object',
+    properties: {
+      message_count: { type: 'number', example: 5 },
+      memory_size: { type: 'number', example: 1024 },
+      context_length: { type: 'number', example: 256 }
+    }
+  })
+  public conversation_stats!: {
+    message_count: number;
+    memory_size: number;
+    context_length: number;
+  };
+}
+
 // Secure generation response schema with security metrics
 export const SecureGenerateResponseSchema = z.object({
   response: z.string(),

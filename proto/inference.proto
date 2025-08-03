@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package inference;
+
+service InferenceService {
+  rpc Classify (ClassifyRequest) returns (ClassifyResponse);
+}
+
+message ClassifyRequest {
+  float sepal_length = 1;
+  float sepal_width = 2;
+  float petal_length = 3;
+  float petal_width = 4;
+}
+
+message ClassifyResponse {
+  int32 predicted_class = 1;
+  string class_name = 2;
+  repeated float probabilities = 3;
+  float confidence = 4;
+  string model_info = 5;
+  double inference_time_ms = 6;
+}
