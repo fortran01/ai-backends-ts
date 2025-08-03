@@ -4,6 +4,9 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { OllamaService } from '../src/inference/services/ollama.service';
 import { OnnxService } from '../src/inference/services/onnx.service';
+import { MemoryService } from '../src/inference/services/memory.service';
+import { GrpcService } from '../src/inference/services/grpc.service';
+import { HttpInferenceService } from '../src/inference/services/http.service';
 
 /**
  * End-to-End tests for AI Backends API
@@ -15,6 +18,9 @@ describe('AI Backends API (e2e)', () => {
   let app: INestApplication;
   let ollamaService: jest.Mocked<OllamaService>;
   let onnxService: jest.Mocked<OnnxService>;
+  let memoryService: jest.Mocked<MemoryService>;
+  let grpcService: jest.Mocked<GrpcService>;
+  let httpInferenceService: jest.Mocked<HttpInferenceService>;
 
   beforeAll(async () => {
     // Create mocked services
@@ -22,6 +28,7 @@ describe('AI Backends API (e2e)', () => {
       generateText: jest.fn(),
       isAvailable: jest.fn(),
       isServiceAvailable: jest.fn(),
+      callOllamaWithHistory: jest.fn(),
     };
 
     const mockOnnxService = {
@@ -31,6 +38,30 @@ describe('AI Backends API (e2e)', () => {
       onModuleInit: jest.fn(),
     };
 
+    const mockMemoryService = {
+      getSessionMessages: jest.fn(),
+      buildConversationHistory: jest.fn(),
+      formatChatTemplate: jest.fn(),
+      saveConversation: jest.fn(),
+      getConversationStats: jest.fn(),
+      clearSession: jest.fn(),
+      getActiveSessions: jest.fn(),
+      cleanupOldSessions: jest.fn(),
+    };
+
+    const mockGrpcService = {
+      classifyIrisViaGrpc: jest.fn(),
+      isGrpcServerAvailable: jest.fn(),
+      getGrpcStatus: jest.fn(),
+      onModuleDestroy: jest.fn(),
+    };
+
+    const mockHttpInferenceService = {
+      classifyIrisViaHttp: jest.fn(),
+      isHttpServerAvailable: jest.fn(),
+      getHttpStatus: jest.fn(),
+    };
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -38,6 +69,12 @@ describe('AI Backends API (e2e)', () => {
       .useValue(mockOllamaService)
       .overrideProvider(OnnxService)
       .useValue(mockOnnxService)
+      .overrideProvider(MemoryService)
+      .useValue(mockMemoryService)
+      .overrideProvider(GrpcService)
+      .useValue(mockGrpcService)
+      .overrideProvider(HttpInferenceService)
+      .useValue(mockHttpInferenceService)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -53,6 +90,9 @@ describe('AI Backends API (e2e)', () => {
 
     ollamaService = app.get(OllamaService);
     onnxService = app.get(OnnxService);
+    memoryService = app.get(MemoryService);
+    grpcService = app.get(GrpcService);
+    httpInferenceService = app.get(HttpInferenceService);
   });
 
   afterAll(async () => {
