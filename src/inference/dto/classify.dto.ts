@@ -45,7 +45,7 @@ export class ClassifyRequestDtoClass implements ClassifyRequestDto {
     minimum: 0.0,
     maximum: 10.0
   })
-  public sepal_length: number;
+  public sepal_length!: number;
 
   @ApiProperty({
     description: 'Sepal width in centimeters',
@@ -53,7 +53,7 @@ export class ClassifyRequestDtoClass implements ClassifyRequestDto {
     minimum: 0.0,
     maximum: 10.0
   })
-  public sepal_width: number;
+  public sepal_width!: number;
 
   @ApiProperty({
     description: 'Petal length in centimeters',
@@ -61,7 +61,7 @@ export class ClassifyRequestDtoClass implements ClassifyRequestDto {
     minimum: 0.0,
     maximum: 10.0
   })
-  public petal_length: number;
+  public petal_length!: number;
 
   @ApiProperty({
     description: 'Petal width in centimeters',
@@ -69,7 +69,7 @@ export class ClassifyRequestDtoClass implements ClassifyRequestDto {
     minimum: 0.0,
     maximum: 10.0
   })
-  public petal_width: number;
+  public petal_width!: number;
 }
 
 // Classification response schema
@@ -103,7 +103,7 @@ export class ClassifyResponseDtoClass implements ClassifyResponseDto {
     example: 'setosa',
     enum: ['setosa', 'versicolor', 'virginica']
   })
-  public predicted_class: string;
+  public predicted_class!: string;
 
   @ApiProperty({
     description: 'Predicted class index (0=setosa, 1=versicolor, 2=virginica)',
@@ -111,7 +111,7 @@ export class ClassifyResponseDtoClass implements ClassifyResponseDto {
     minimum: 0,
     maximum: 2
   })
-  public predicted_class_index: number;
+  public predicted_class_index!: number;
 
   @ApiProperty({
     description: 'Prediction probabilities for each class [setosa, versicolor, virginica]',
@@ -119,7 +119,7 @@ export class ClassifyResponseDtoClass implements ClassifyResponseDto {
     type: 'array',
     items: { type: 'number', minimum: 0, maximum: 1 }
   })
-  public probabilities: number[];
+  public probabilities!: number[];
 
   @ApiProperty({
     description: 'Confidence score (highest probability)',
@@ -127,13 +127,13 @@ export class ClassifyResponseDtoClass implements ClassifyResponseDto {
     minimum: 0,
     maximum: 1
   })
-  public confidence: number;
+  public confidence!: number;
 
   @ApiProperty({
     description: 'All available class names',
     example: ['setosa', 'versicolor', 'virginica']
   })
-  public class_names: string[];
+  public class_names!: string[];
 
   @ApiProperty({
     description: 'Echo of input features for verification',
@@ -145,7 +145,7 @@ export class ClassifyResponseDtoClass implements ClassifyResponseDto {
       petal_width: { type: 'number', example: 0.2 }
     }
   })
-  public input_features: {
+  public input_features!: {
     sepal_length: number;
     sepal_width: number;
     petal_length: number;
@@ -161,7 +161,7 @@ export class ClassifyResponseDtoClass implements ClassifyResponseDto {
       inference_time_ms: { type: 'number', example: 2.5 }
     }
   })
-  public model_info: {
+  public model_info!: {
     format: string;
     version: string;
     inference_time_ms: number;

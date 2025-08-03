@@ -30,7 +30,7 @@ export class GenerateRequestDtoClass implements GenerateRequestDto {
     minLength: 1,
     maxLength: 500
   })
-  public prompt: string;
+  public prompt!: string;
 }
 
 // Generation response schema
@@ -51,25 +51,25 @@ export class GenerateResponseDtoClass implements GenerateResponseDto {
     description: 'Generated text response from the model',
     example: 'Machine learning is a subset of artificial intelligence...'
   })
-  public response: string;
+  public response!: string;
 
   @ApiProperty({
     description: 'Model used for generation',
     example: 'tinyllama'
   })
-  public model: string;
+  public model!: string;
 
   @ApiProperty({
     description: 'Timestamp when generation was created',
     example: '2024-01-15T10:30:00.000Z'
   })
-  public created_at: string;
+  public created_at!: string;
 
   @ApiProperty({
     description: 'Whether generation is complete',
     example: true
   })
-  public done: boolean;
+  public done!: boolean;
 }
 
 // Secure generation response schema with security metrics
@@ -97,25 +97,25 @@ export class SecureGenerateResponseDtoClass implements SecureGenerateResponseDto
     description: 'Generated text response from the model',
     example: 'Machine learning is a subset of artificial intelligence...'
   })
-  public response: string;
+  public response!: string;
 
   @ApiProperty({
     description: 'Model used for generation',
     example: 'tinyllama'
   })
-  public model: string;
+  public model!: string;
 
   @ApiProperty({
     description: 'Timestamp when generation was created',
     example: '2024-01-15T10:30:00.000Z'
   })
-  public created_at: string;
+  public created_at!: string;
 
   @ApiProperty({
     description: 'Whether generation is complete',
     example: true
   })
-  public done: boolean;
+  public done!: boolean;
 
   @ApiProperty({
     description: 'Security analysis of the input prompt',
@@ -132,7 +132,7 @@ export class SecureGenerateResponseDtoClass implements SecureGenerateResponseDto
       sanitization_applied: { type: 'boolean', example: true }
     }
   })
-  public security_analysis: {
+  public security_analysis!: {
     detected_patterns: string[];
     original_length: number;
     sanitized_length: number;

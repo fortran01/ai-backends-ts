@@ -171,11 +171,9 @@ describe('OllamaService', () => {
         prompt: 'Test prompt'
       };
 
-      const timeoutError = {
-        code: 'ETIMEDOUT',
-        message: 'timeout of 30000ms exceeded',
-        response: undefined
-      };
+      const timeoutError = new Error('timeout of 30000ms exceeded');
+      (timeoutError as any).code = 'ETIMEDOUT';
+      (timeoutError as any).response = undefined;
 
       jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => timeoutError));
 
@@ -200,12 +198,10 @@ describe('OllamaService', () => {
         prompt: 'Test prompt'
       };
 
-      const notFoundError = {
-        response: {
-          status: 404,
-          data: { error: 'model not found' }
-        },
-        message: 'Request failed with status code 404'
+      const notFoundError = new Error('Request failed with status code 404');
+      (notFoundError as any).response = {
+        status: 404,
+        data: { error: 'model not found' }
       };
 
       jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => notFoundError));
@@ -231,12 +227,10 @@ describe('OllamaService', () => {
         prompt: 'Test prompt'
       };
 
-      const serverError = {
-        response: {
-          status: 500,
-          data: { error: 'internal server error' }
-        },
-        message: 'Request failed with status code 500'
+      const serverError = new Error('Request failed with status code 500');
+      (serverError as any).response = {
+        status: 500,
+        data: { error: 'internal server error' }
       };
 
       jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => serverError));
@@ -282,6 +276,7 @@ describe('OllamaService', () => {
       expect(result.model).toBe('tinyllama');
       expect(result.done).toBe(true);
       expect(result.response).toBe(''); // Service returns empty string for missing response
+      expect(result.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/); // Should have created_at timestamp
     });
 
     it('should handle special characters in prompts', async () => {

@@ -404,8 +404,8 @@ describe('InferenceController', () => {
       const result = await controller.getStatus();
 
       expect(result).toEqual(expectedStatus);
-      expect(result.ollama.available).toBe(false);
-      expect(result.onnx.ready).toBe(true);
+      expect((result as any).ollama.available).toBe(false);
+      expect((result as any).onnx.ready).toBe(true);
     });
 
     it('should return service status with ONNX model not ready', async () => {
@@ -432,8 +432,8 @@ describe('InferenceController', () => {
       const result = await controller.getStatus();
 
       expect(result).toEqual(expectedStatus);
-      expect(result.ollama.available).toBe(true);
-      expect(result.onnx.ready).toBe(false);
+      expect((result as any).ollama.available).toBe(true);
+      expect((result as any).onnx.ready).toBe(false);
     });
 
     it('should handle status check errors', async () => {
@@ -494,8 +494,8 @@ describe('InferenceController', () => {
       const request1: GenerateRequestDto = { prompt: 'First prompt' };
       const request2: GenerateRequestDto = { prompt: 'Second prompt' };
 
-      const response1 = { response: 'First response', model: 'tinyllama', done: true };
-      const response2 = { response: 'Second response', model: 'tinyllama', done: true };
+      const response1 = { response: 'First response', model: 'tinyllama', created_at: '2025-08-02T20:00:00.000Z', done: true };
+      const response2 = { response: 'Second response', model: 'tinyllama', created_at: '2025-08-02T20:00:00.000Z', done: true };
 
       inferenceService.generateText
         .mockResolvedValueOnce(response1)
@@ -520,12 +520,24 @@ describe('InferenceController', () => {
         petal_width: 0.1
       };
 
-      const generateResponse = { response: 'Generated text', model: 'tinyllama', done: true };
+      const generateResponse = { response: 'Generated text', model: 'tinyllama', created_at: '2025-08-02T20:00:00.000Z', done: true };
       const classifyResponse = {
         predicted_class: 'setosa',
         predicted_class_index: 0,
         probabilities: [1.0, 0.0, 0.0],
-        confidence: 1.0
+        confidence: 1.0,
+        class_names: ['setosa', 'versicolor', 'virginica'],
+        input_features: {
+          sepal_length: 5.0,
+          sepal_width: 3.0,
+          petal_length: 1.0,
+          petal_width: 0.1
+        },
+        model_info: {
+          format: 'ONNX',
+          version: '1.0',
+          inference_time_ms: 2.5
+        }
       };
 
       inferenceService.generateText.mockResolvedValue(generateResponse);
