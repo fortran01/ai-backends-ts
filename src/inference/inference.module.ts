@@ -7,6 +7,7 @@ import { SecurityService } from './services/security.service';
 import { OnnxService } from './services/onnx.service';
 import { MemoryService } from './services/memory.service';
 import { GrpcService } from './services/grpc.service';
+import { HttpInferenceService } from './services/http.service';
 
 /**
  * Inference module containing all model serving functionality
@@ -29,6 +30,7 @@ import { GrpcService } from './services/grpc.service';
     OnnxService,
     MemoryService,
     GrpcService,
+    HttpInferenceService,
   ],
   exports: [
     InferenceService, // Export for use in other modules if needed

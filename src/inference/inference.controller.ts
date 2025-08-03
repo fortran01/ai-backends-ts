@@ -263,6 +263,60 @@ export class InferenceController {
   }
 
   /**
+   * Iris species classification using HTTP server for network-based inference
+   * 
+   * @param request - Classification request with Iris features
+   * @returns Classification results from HTTP server with REST protocol
+   */
+  @Post('classify-http')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Classify Iris species via HTTP server',
+    description: 'Demonstrates network-based HTTP/REST communication for model inference. Requires the standalone HTTP server to be running on port 3001.'
+  })
+  @ApiBody({ 
+    type: ClassifyRequestDtoClass,
+    description: 'Iris flower measurements for HTTP-based species prediction',
+    examples: {
+      setosa: {
+        summary: 'Typical Setosa measurements',
+        value: {
+          sepal_length: 5.1,
+          sepal_width: 3.5,
+          petal_length: 1.4,
+          petal_width: 0.2
+        }
+      },
+      versicolor: {
+        summary: 'Typical Versicolor measurements',
+        value: {
+          sepal_length: 7.0,
+          sepal_width: 3.2,
+          petal_length: 4.7,
+          petal_width: 1.4
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'HTTP classification completed successfully',
+    type: ClassifyResponseDtoClass
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid measurements or HTTP request format error' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'HTTP server unavailable. Please start the HTTP server: npm run http-server' 
+  })
+  @UsePipes(new ZodValidationPipe(ClassifyRequestSchema))
+  public async classifyIrisViaHttp(@Body() request: ClassifyRequestDto): Promise<ClassifyResponseDtoClass> {
+    return this.inferenceService.classifyIrisViaHttp(request);
+  }
+
+  /**
    * Iris species classification using gRPC server for high-performance inference
    * 
    * @param request - Classification request with Iris features
@@ -325,8 +379,8 @@ export class InferenceController {
   @Post('classify-benchmark')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
-    summary: 'Performance comparison: REST vs gRPC',
-    description: 'Benchmarks REST (ONNX direct) vs gRPC inference performance. Runs multiple iterations and provides detailed timing analysis, speedup factors, and throughput metrics.'
+    summary: 'Performance comparison: HTTP/REST vs gRPC',
+    description: 'Benchmarks HTTP/REST (via HTTP server) vs gRPC inference performance. Both endpoints make network calls for fair comparison. Runs multiple iterations and provides detailed timing analysis, speedup factors, and throughput metrics demonstrating gRPC\'s performance advantages.'
   })
   @ApiBody({ 
     type: PerformanceComparisonRequestDtoClass,

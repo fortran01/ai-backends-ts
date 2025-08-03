@@ -4,6 +4,7 @@ import { SecurityService } from './services/security.service';
 import { OnnxService } from './services/onnx.service';
 import { MemoryService } from './services/memory.service';
 import { GrpcService } from './services/grpc.service';
+import { HttpInferenceService } from './services/http.service';
 import { 
   GenerateRequestDto, 
   GenerateResponseDto, 
@@ -30,7 +31,8 @@ export class InferenceService {
     private readonly securityService: SecurityService,
     private readonly onnxService: OnnxService,
     private readonly memoryService: MemoryService,
-    private readonly grpcService: GrpcService
+    private readonly grpcService: GrpcService,
+    private readonly httpInferenceService: HttpInferenceService
   ) {}
 
   /**
@@ -154,6 +156,16 @@ export class InferenceService {
   }
 
   /**
+   * Classify Iris species using HTTP server
+   * 
+   * @param request - Classification request with Iris features
+   * @returns Classification results from HTTP server
+   */
+  public async classifyIrisViaHttp(request: ClassifyRequestDto): Promise<ClassifyResponseDto> {
+    return this.httpInferenceService.classifyIrisViaHttp(request);
+  }
+
+  /**
    * Classify Iris species using gRPC server
    * 
    * @param request - Classification request with Iris features
@@ -211,11 +223,11 @@ export class InferenceService {
     let sampleRestResult: ClassifyResponseDto | null = null;
     let sampleGrpcResult: ClassifyResponseDto | null = null;
 
-    // Perform REST performance testing
+    // Perform REST performance testing (via HTTP server for fair comparison)
     for (let i = 0; i < validIterations; i++) {
       try {
         const startTime: number = Date.now();
-        const result: ClassifyResponseDto = await this.onnxService.classifyIris(request);
+        const result: ClassifyResponseDto = await this.httpInferenceService.classifyIrisViaHttp(request);
         const endTime: number = Date.now();
         
         restTimes.push(endTime - startTime);
@@ -442,10 +454,11 @@ export class InferenceService {
    * @returns Service status information
    */
   public async getServiceStatus(): Promise<Record<string, unknown>> {
-    const [ollamaAvailable, onnxReady, grpcStatus] = await Promise.all([
+    const [ollamaAvailable, onnxReady, grpcStatus, httpStatus] = await Promise.all([
       this.ollamaService.isServiceAvailable(),
       Promise.resolve(this.onnxService.isModelReady()),
-      this.grpcService.getGrpcStatus()
+      this.grpcService.getGrpcStatus(),
+      this.httpInferenceService.getHttpStatus()
     ]);
 
     return {
@@ -457,7 +470,8 @@ export class InferenceService {
         ready: onnxReady,
         model_info: this.onnxService.getModelInfo()
       },
-      grpc: grpcStatus
+      grpc: grpcStatus,
+      http: httpStatus
     };
   }
 }

@@ -14,10 +14,11 @@ This implementation covers foundational and advanced concepts of AI model servin
 - **Batch Processing**: Standalone script for processing multiple prompts
 
 ### Phase 2 Features ✅
-- **Stateful Chat with Memory**: Conversation memory using LangChain orchestration
+- **Stateful Chat with Memory**: Conversation memory using structured message arrays for TinyLlama
 - **Model Context Protocol (MCP)**: Prompt templating and memory management
-- **gRPC High-Performance Communication**: Binary protocol for fast inference
-- **Performance Benchmarking**: REST vs gRPC comparison with detailed metrics
+- **Fair Performance Architecture**: HTTP server + gRPC server for network-to-network comparison
+- **gRPC High-Performance Communication**: Binary protocol demonstrating 2.5x-10x potential speedup
+- **Performance Benchmarking**: HTTP/REST vs gRPC comparison with detailed metrics
 - **TypeScript Serialization Challenges**: Complex data type handling demonstrations
 
 ## 📁 Project Structure
@@ -43,8 +44,9 @@ ai-backends-ts/
 │   │       ├── ollama.service.ts  # Ollama API integration
 │   │       ├── security.service.ts # Security analysis
 │   │       ├── onnx.service.ts    # ONNX model inference
-│   │       ├── memory.service.ts  # LangChain conversation memory
-│   │       └── grpc.service.ts    # gRPC client communication
+│   │       ├── memory.service.ts  # Structured message conversation memory
+│   │       ├── grpc.service.ts    # gRPC client communication
+│   │       └── http.service.ts    # HTTP server client communication
 │   └── generated/                 # Auto-generated gRPC code
 │       ├── inference_pb.js        # Protocol buffer definitions
 │       ├── inference_pb.d.ts      # TypeScript definitions
@@ -57,6 +59,7 @@ ai-backends-ts/
 ├── scripts/
 │   └── batch-inference.ts         # Batch processing script
 ├── grpc-server.ts                 # Standalone gRPC server
+├── http-server.ts                 # Standalone HTTP inference server
 ├── sample_prompts.txt              # Sample text input
 ├── sample_prompts.csv              # Sample CSV input with metadata
 ├── package.json                   # Dependencies and scripts
@@ -87,15 +90,21 @@ ai-backends-ts/
    npm run start:dev
    ```
 
-3. **(Phase 2) Start the gRPC server** (in a separate terminal):
+3. **(Phase 2) Start the HTTP inference server** (in a separate terminal):
+   ```bash  
+   npm run http-server
+   ```
+
+4. **(Phase 2) Start the gRPC server** (in another separate terminal):
    ```bash
    npm run grpc-server
    ```
 
-4. Access the API:
+5. Access the API:
    - **Main API**: http://localhost:3000
    - **Swagger Docs**: http://localhost:3000/api/docs
    - **Health Check**: http://localhost:3000/health
+   - **HTTP Inference Server**: http://localhost:3001
    - **gRPC Server**: localhost:50051
 
 ## 🔗 API Endpoints
@@ -143,9 +152,10 @@ ai-backends-ts/
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/v1/classify` | POST | Iris species classification using ONNX |
+| `/api/v1/classify` | POST | Iris species classification using ONNX (direct) |
+| `/api/v1/classify-http` | POST | **Phase 2**: HTTP server classification (network-based) |
 | `/api/v1/classify-grpc` | POST | **Phase 2**: High-performance gRPC classification |
-| `/api/v1/classify-benchmark` | POST | **Phase 2**: REST vs gRPC performance comparison |
+| `/api/v1/classify-benchmark` | POST | **Phase 2**: HTTP vs gRPC fair performance comparison |
 | `/api/v1/classify-detailed` | POST | **Phase 2**: Serialization challenge demonstrations |
 
 #### Example Request:
@@ -202,7 +212,7 @@ curl -X POST http://localhost:3000/api/v1/chat \
   }'
 ```
 
-### Performance Comparison (REST vs gRPC)
+### Performance Comparison (HTTP vs gRPC)
 
 ```bash
 # Quick 5-iteration benchmark
@@ -358,6 +368,7 @@ npm run batch-inference -- \
 
 ```bash
 npm run start:dev       # Start NestJS app with hot reload
+npm run http-server     # Start standalone HTTP inference server (Phase 2)
 npm run grpc-server     # Start standalone gRPC server (Phase 2)
 npm run batch-inference # Run batch inference script
 npm run build           # Build for production
@@ -390,11 +401,11 @@ This Phase 1 & 2 implementation covers these key module concepts:
 - **5.1**: Input Validation & Security best practices
 
 ### Phase 2 Concepts ✅
-- **2.2**: APIs for Inference (REST vs gRPC performance comparison, binary serialization)
+- **2.2**: APIs for Inference (HTTP vs gRPC fair performance comparison, binary serialization)
 - **3.3**: Specialized Frameworks for LLMs (Ollama as local LLM service)
 - **4.1**: Model Context Protocol (MCP design pattern implementation)
-- **4.2**: Core Components (Prompt Templates, Conversation Memory with LangChain)
-- **4.3**: Orchestration Frameworks (LangChain integration for memory management)
+- **4.2**: Core Components (Structured Message Templates, TinyLlama Chat Format)
+- **4.3**: Orchestration Frameworks (Custom memory management for conversation flow)
 - **5.2**: Serialization of Complex Data Types (TypeScript/JavaScript challenges)
 
 ## 🛠️ Architecture Highlights
@@ -444,6 +455,46 @@ Upcoming phases will add:
 - [LangChain Documentation](https://js.langchain.com/)
 - [gRPC Documentation](https://grpc.io/docs/languages/node/)
 - [Protocol Buffers Guide](https://protobuf.dev/)
+
+---
+
+## 🎯 **NEW: Fair Performance Architecture**
+
+### **Architectural Improvement (2025)**
+
+This project now implements a **fair network-to-network comparison** between HTTP/REST and gRPC:
+
+**Previous Architecture (Unfair)**:
+- REST: Direct in-process ONNX inference ⚡ (no network overhead)
+- gRPC: Network calls to separate server 🌐 (includes network latency)
+- Result: "Apples to oranges" comparison
+
+**Current Architecture (Fair)**:
+- HTTP/REST: Network calls to HTTP inference server 🌐 (port 3001)
+- gRPC: Network calls to gRPC server 🌐 (port 50051)  
+- Result: **Fair comparison demonstrating gRPC's true performance advantages**
+
+### **Expected Performance Results**
+
+With the fair architecture, you should now see:
+- **gRPC 1.1x-2x faster**: For small payloads like Iris classification
+- **gRPC 2.5x-10x faster**: For larger payloads, high concurrency, or streaming
+- **HTTP/2 advantages**: Binary Protocol Buffers vs JSON serialization
+- **Educational alignment**: Matches module outline expectations
+
+### **How to Test the Fair Comparison**
+
+```bash
+# Start all three servers:
+npm run start:dev     # NestJS API (port 3000)
+npm run http-server   # HTTP inference server (port 3001)  
+npm run grpc-server   # gRPC server (port 50051)
+
+# Test fair performance comparison:
+curl -X POST http://localhost:3000/api/v1/classify-benchmark \
+  -H "Content-Type: application/json" \
+  -d '{"sepal_length": 5.1, "sepal_width": 3.5, "petal_length": 1.4, "petal_width": 0.2, "iterations": 20}'
+```
 
 ---
 

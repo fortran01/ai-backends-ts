@@ -1,27 +1,18 @@
-import * as grpc from '@grpc/grpc-js';
-import * as protoLoader from '@grpc/proto-loader';
+import express from 'express';
 import * as ort from 'onnxruntime-node';
 import * as path from 'path';
 import * as fs from 'fs';
 
 /**
- * Standalone gRPC server for Iris classification using ONNX Runtime
+ * Standalone HTTP server for Iris classification using ONNX Runtime
  * 
  * Following the coding guidelines: Comprehensive error handling,
  * proper TypeScript typing, and production-ready logging
  */
 
-// Load the protobuf definition
-const PROTO_PATH: string = path.join(__dirname, 'proto', 'inference.proto');
-const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-  keepCase: true,
-  longs: String,
-  enums: String,
-  defaults: true,
-  oneofs: true,
-});
-
-const inferenceProto = grpc.loadPackageDefinition(packageDefinition).inference as any;
+// Express app setup
+const app = express();
+app.use(express.json());
 
 // ONNX model path
 const MODEL_PATH: string = path.join(__dirname, 'models', 'iris_classifier_improved.onnx');
@@ -92,7 +83,7 @@ async function performInference(features: number[]): Promise<{
     const probabilities: number[] = Array.from(probabilityOutput.data as Float32Array);
     const confidence: number = Math.max(...probabilities);
 
-    console.log(`Inference completed in ${inferenceTime}ms - Predicted: ${className} (${confidence.toFixed(4)})`);
+    console.log(`HTTP Inference completed in ${inferenceTime}ms - Predicted: ${className} (${confidence.toFixed(4)})`);
 
     return {
       predictedClass,
@@ -107,115 +98,108 @@ async function performInference(features: number[]): Promise<{
 }
 
 /**
- * gRPC service implementation for Iris classification
+ * Health check endpoint
  */
-const inferenceServiceImpl = {
-  classify: async (call: any, callback: any): Promise<void> => {
-    try {
-      const request = call.request;
-      console.log('Received classification request:', request);
-
-      // Validate input features
-      const features: number[] = [
-        request.sepal_length,
-        request.sepal_width,
-        request.petal_length,
-        request.petal_width
-      ];
-
-      // Validate feature ranges (basic biological constraints)
-      for (const feature of features) {
-        if (typeof feature !== 'number' || isNaN(feature) || feature < 0 || feature > 20) {
-          const error = new Error(`Invalid feature value: ${feature}. Must be a number between 0 and 20.`);
-          return callback({
-            code: grpc.status.INVALID_ARGUMENT,
-            message: error.message
-          });
-        }
-      }
-
-      // Perform inference
-      const startTime: number = Date.now();
-      const result = await performInference(features);
-      const totalTime: number = Date.now() - startTime;
-
-      // Prepare response
-      const response = {
-        predicted_class: result.predictedClass,
-        class_name: result.className,
-        probabilities: result.probabilities,
-        confidence: result.confidence,
-        model_info: `ONNX RandomForest Classifier (${CLASS_NAMES.length} classes)`,
-        inference_time_ms: totalTime
-      };
-
-      console.log('Sending response:', response);
-      callback(null, response);
-    } catch (error: unknown) {
-      console.error('Classification error:', error);
-      callback({
-        code: grpc.status.INTERNAL,
-        message: error instanceof Error ? error.message : 'Internal server error'
-      });
-    }
-  }
-};
+app.get('/health', (req: express.Request, res: express.Response) => {
+  res.json({
+    status: 'healthy',
+    service: 'HTTP Inference Server',
+    model: 'iris_classifier_improved.onnx',
+    modelLoaded: inferenceSession !== null,
+    timestamp: new Date().toISOString()
+  });
+});
 
 /**
- * Start the gRPC server
+ * Classification endpoint
+ */
+app.post('/classify', async (req: express.Request, res: express.Response) => {
+  try {
+    const { sepal_length, sepal_width, petal_length, petal_width } = req.body;
+
+    // Validate input features
+    const features: number[] = [sepal_length, sepal_width, petal_length, petal_width];
+
+    // Validate feature ranges (basic biological constraints)
+    for (const feature of features) {
+      if (typeof feature !== 'number' || isNaN(feature) || feature < 0 || feature > 20) {
+        return res.status(400).json({
+          error: `Invalid feature value: ${feature}. Must be a number between 0 and 20.`,
+          code: 'INVALID_INPUT'
+        });
+      }
+    }
+
+    // Perform inference
+    const startTime: number = Date.now();
+    const result = await performInference(features);
+    const totalTime: number = Date.now() - startTime;
+
+    // Prepare response
+    const response = {
+      predicted_class: result.className,
+      predicted_class_index: result.predictedClass,
+      class_names: CLASS_NAMES,
+      probabilities: result.probabilities,
+      confidence: result.confidence,
+      model_info: {
+        format: 'HTTP/ONNX',
+        version: '1.0',
+        inference_time_ms: totalTime
+      },
+      input_features: {
+        sepal_length,
+        sepal_width,
+        petal_length,
+        petal_width
+      }
+    };
+
+    console.log('Sending HTTP response:', response);
+    res.json(response);
+  } catch (error: unknown) {
+    console.error('Classification error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Internal server error',
+      code: 'INFERENCE_ERROR'
+    });
+  }
+});
+
+/**
+ * Start the HTTP server
  */
 async function startServer(): Promise<void> {
   try {
     // Initialize ONNX model first
     await initializeModel();
 
-    // Create gRPC server
-    const server = new grpc.Server();
-
-    // Add the inference service
-    server.addService(inferenceProto.InferenceService.service, inferenceServiceImpl);
-
-    // Bind server to port
-    const port: string = '0.0.0.0:50051';
-    server.bindAsync(port, grpc.ServerCredentials.createInsecure(), (error: Error | null, port: number) => {
-      if (error) {
-        console.error('Failed to bind gRPC server:', error);
-        process.exit(1);
-      }
-
-      console.log(`gRPC server started on port ${port}`);
-      console.log('Service: InferenceService');
-      console.log('Method: Classify');
+    // Start HTTP server
+    const port: number = 3001;
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`HTTP Inference Server started on port ${port}`);
+      console.log('Endpoints:');
+      console.log('  GET  /health - Health check');
+      console.log('  POST /classify - Iris classification');
       console.log('Ready to receive requests...');
-
-      // Start the server
-      server.start();
     });
 
     // Graceful shutdown handling
     process.on('SIGINT', () => {
       console.log('\nReceived SIGINT, shutting down gracefully...');
-      server.tryShutdown((error?: Error) => {
-        if (error) {
-          console.error('Error during server shutdown:', error);
-          process.exit(1);
-        }
-        console.log('gRPC server shut down successfully');
-        process.exit(0);
-      });
+      process.exit(0);
     });
 
   } catch (error: unknown) {
-    console.error('Failed to start gRPC server:', error);
+    console.error('Failed to start HTTP server:', error);
     process.exit(1);
   }
 }
 
 // Start the server
 if (require.main === module) {
-  console.log('Starting gRPC Inference Server...');
+  console.log('Starting HTTP Inference Server...');
   console.log('Model:', MODEL_PATH);
-  console.log('Proto:', PROTO_PATH);
   startServer().catch((error: unknown) => {
     console.error('Unhandled error:', error);
     process.exit(1);

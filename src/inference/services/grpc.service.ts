@@ -134,8 +134,8 @@ export class GrpcService implements OnModuleDestroy {
 
         // Transform gRPC response to DTO format
         const result: ClassifyResponseDto = {
-          predicted_class: response.predicted_class,
-          predicted_class_index: response.predicted_class_index,
+          predicted_class: response.class_name,
+          predicted_class_index: response.predicted_class,
           class_names: ['setosa', 'versicolor', 'virginica'],
           probabilities: response.probabilities,
           confidence: response.confidence,
