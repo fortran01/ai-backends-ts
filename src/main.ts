@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 /**
@@ -11,6 +11,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
  */
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
   
   // Enable global validation using class-validator
   app.useGlobalPipes(new ValidationPipe({
@@ -33,8 +34,8 @@ async function bootstrap(): Promise<void> {
 
   const port: number = parseInt(process.env.PORT ?? '3000', 10);
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger documentation available at: http://localhost:${port}/api/docs`);
+  logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`Swagger documentation available at: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 
@@ -10,6 +10,8 @@ import { firstValueFrom } from 'rxjs';
  */
 @Injectable()
 export class AppService {
+  private readonly logger = new Logger(AppService.name);
+
   constructor(private readonly httpService: HttpService) {}
 
   /**
@@ -23,7 +25,7 @@ export class AppService {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      dependencies: {}
+      dependencies: {} as Record<string, string>
     };
 
     try {
@@ -34,18 +36,18 @@ export class AppService {
         })
       );
       
-      healthData.dependencies.ollama = ollamaResponse.status === 200 ? 'connected' : 'unreachable';
+      (healthData.dependencies as Record<string, string>).ollama = ollamaResponse.status === 200 ? 'connected' : 'unreachable';
     } catch (error: unknown) {
-      healthData.dependencies.ollama = 'unreachable';
+      (healthData.dependencies as Record<string, string>).ollama = 'unreachable';
       healthData.status = 'degraded';
       
       // Log the error for monitoring
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.warn(`Ollama health check failed: ${errorMessage}`);
+      this.logger.warn(`Ollama health check failed: ${errorMessage}`);
     }
 
     // If critical dependencies are down, return 503
-    if (healthData.dependencies.ollama === 'unreachable') {
+    if ((healthData.dependencies as Record<string, string>).ollama === 'unreachable') {
       throw new HttpException({
         ...healthData,
         status: 'unhealthy',

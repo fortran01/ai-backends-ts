@@ -565,6 +565,7 @@ describe('AI Backends API (e2e)', () => {
       const mockResponse = {
         response: 'Test response',
         model: 'tinyllama',
+        created_at: '2025-08-02T20:00:00.000Z',
         done: true
       };
 
@@ -596,6 +597,7 @@ describe('AI Backends API (e2e)', () => {
       const mockResponse = {
         response: 'Concurrent response',
         model: 'tinyllama',
+        created_at: '2025-08-02T20:00:00.000Z',
         done: true
       };
 
@@ -621,6 +623,7 @@ describe('AI Backends API (e2e)', () => {
       const largeResponse = {
         response: 'x'.repeat(10000),
         model: 'tinyllama',
+        created_at: '2025-08-02T20:00:00.000Z',
         done: true
       };
 
