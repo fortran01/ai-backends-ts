@@ -83,6 +83,11 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"sepal_length": 5.1, "sepal_width": 3.5, "petal_length": 1.4, "petal_width": 0.2}' || echo "Classification test skipped (requires ONNX model)"
           
+          # Test semantic caching (Phase 3)
+          curl -f -X POST http://localhost:3000/api/v1/chat-semantic \
+            -H "Content-Type: application/json" \
+            -d '{"prompt": "What is AI?", "session_id": "test-session"}' || echo "Semantic chat test skipped (requires Ollama)"
+          
           # Stop the application
           kill $APP_PID || true
           

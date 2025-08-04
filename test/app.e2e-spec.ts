@@ -7,6 +7,7 @@ import { OnnxService } from '../src/inference/services/onnx.service';
 import { MemoryService, ChatMessage } from '../src/inference/services/memory.service';
 import { GrpcService } from '../src/inference/services/grpc.service';
 import { HttpInferenceService } from '../src/inference/services/http.service';
+import { SemanticCacheService } from '../src/inference/services/semantic-cache.service';
 
 /**
  * End-to-End tests for AI Backends API
@@ -21,6 +22,7 @@ describe('AI Backends API (e2e)', () => {
   let memoryService: jest.Mocked<MemoryService>;
   let grpcService: jest.Mocked<GrpcService>;
   let httpInferenceService: jest.Mocked<HttpInferenceService>;
+  let semanticCacheService: jest.Mocked<SemanticCacheService>;
 
   beforeAll(async () => {
     // Create mocked services
@@ -62,6 +64,16 @@ describe('AI Backends API (e2e)', () => {
       getHttpStatus: jest.fn(),
     };
 
+    const mockSemanticCacheService = {
+      findSimilarResponse: jest.fn(),
+      cacheResponse: jest.fn(),
+      getCacheStats: jest.fn(),
+      clearCache: jest.fn(),
+      getCacheSize: jest.fn(),
+      getModelInfo: jest.fn(),
+      onModuleDestroy: jest.fn(),
+    };
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -75,6 +87,8 @@ describe('AI Backends API (e2e)', () => {
       .useValue(mockGrpcService)
       .overrideProvider(HttpInferenceService)
       .useValue(mockHttpInferenceService)
+      .overrideProvider(SemanticCacheService)
+      .useValue(mockSemanticCacheService)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -102,6 +116,7 @@ describe('AI Backends API (e2e)', () => {
     memoryService = app.get(MemoryService);
     grpcService = app.get(GrpcService);
     httpInferenceService = app.get(HttpInferenceService);
+    semanticCacheService = app.get(SemanticCacheService);
   });
 
   afterAll(async () => {
@@ -1388,6 +1403,667 @@ describe('AI Backends API (e2e)', () => {
         .post('/api/v1/classify-benchmark')
         .send({ sepal_length: 5.1, sepal_width: 3.5, petal_length: 1.4, petal_width: 0.2, iterations: 101 })
         .expect(400);
+    });
+  });
+
+  // PHASE 3 E2E TESTS - Semantic Caching with Vector Embeddings
+  describe('Phase 3: Semantic Caching API', () => {
+    describe('/api/v1/chat-semantic (POST)', () => {
+      it('should handle cache miss on first semantic query', () => {
+        const sessionId: string = 'semantic-test-session-1';
+        const prompt: string = 'What is artificial intelligence?';
+        
+        const mockConversationHistory: ChatMessage[] = [
+          { role: 'system', content: 'You are a helpful AI assistant.' },
+          { role: 'user', content: prompt }
+        ];
+
+        const mockFormattedTemplate = '<|system|>\nYou are a helpful AI assistant.</s>\n<|user|>\nWhat is artificial intelligence?</s>\n<|assistant|>\n';
+
+        const mockOllamaResponse = {
+          response: 'Artificial intelligence (AI) is a branch of computer science that aims to create intelligent machines capable of performing tasks that typically require human intelligence.',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:30:00.000Z',
+          done: true
+        };
+
+        const mockCacheStats = {
+          hit: false,
+          similarity: 0.0,
+          responseTime: 125,
+          cacheSize: 0,
+          threshold: 0.85
+        };
+
+        const mockStats = {
+          message_count: 2,
+          memory_size: 512,
+          context_length: 128
+        };
+
+        // Mock semantic cache miss (no similar response found)
+        semanticCacheService.findSimilarResponse.mockResolvedValue(null);
+        semanticCacheService.getCacheStats.mockReturnValue(mockCacheStats);
+        
+        // Mock conversation services
+        memoryService.buildConversationHistory.mockReturnValue(mockConversationHistory);
+        memoryService.formatChatTemplate.mockReturnValue(mockFormattedTemplate);
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
+        memoryService.getConversationStats.mockReturnValue(mockStats);
+
+        return request(app.getHttpServer())
+          .post('/api/v1/chat-semantic')
+          .send({
+            prompt,
+            session_id: sessionId
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(res.body.response).toContain('Artificial intelligence');
+            expect(res.body.session_id).toBe(sessionId);
+            expect(res.body.semantic_cache).toBeDefined();
+            expect(res.body.semantic_cache.hit).toBe(false);
+            expect(res.body.semantic_cache.similarity).toBe(0.0);
+            expect(res.body.semantic_cache.cacheSize).toBe(0);
+            expect(res.body.semantic_cache.threshold).toBe(0.85);
+            expect(semanticCacheService.cacheResponse).toHaveBeenCalledWith(prompt, mockOllamaResponse.response);
+          });
+      });
+
+      it('should handle cache hit on semantically similar query', () => {
+        const sessionId: string = 'semantic-test-session-2';
+        const originalPrompt: string = 'What is artificial intelligence?';
+        const similarPrompt: string = 'What is AI?';
+        
+        const mockCachedResponse = {
+          embedding: [0.1, 0.2, 0.3], // Mock embedding vector
+          response: 'Artificial intelligence (AI) is a branch of computer science that aims to create intelligent machines.',
+          timestamp: Date.now() - 60000, // 1 minute ago
+          prompt: originalPrompt,
+          similarity: 0.92
+        };
+
+        const mockCacheStats = {
+          hit: true,
+          similarity: 0.92,
+          responseTime: 15, // Much faster due to cache hit
+          cacheSize: 5,
+          threshold: 0.85
+        };
+
+        // Mock semantic cache hit
+        semanticCacheService.findSimilarResponse.mockResolvedValue(mockCachedResponse);
+        semanticCacheService.getCacheStats.mockReturnValue(mockCacheStats);
+
+        return request(app.getHttpServer())
+          .post('/api/v1/chat-semantic')
+          .send({
+            prompt: similarPrompt,
+            session_id: sessionId
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(res.body.response).toBe(mockCachedResponse.response);
+            expect(res.body.session_id).toBe(sessionId);
+            expect(res.body.semantic_cache).toBeDefined();
+            expect(res.body.semantic_cache.hit).toBe(true);
+            expect(res.body.semantic_cache.similarity).toBe(0.92);
+            expect(res.body.semantic_cache.originalPrompt).toBe(originalPrompt);
+            expect(res.body.semantic_cache.responseTime).toBeLessThan(50); // Cache should be fast
+            expect(semanticCacheService.findSimilarResponse).toHaveBeenCalledWith(similarPrompt);
+            // Should not call Ollama service for cache hit
+            expect(ollamaService.generateText).not.toHaveBeenCalled();
+          });
+      });
+
+      it('should handle cache miss for semantically different query', () => {
+        const sessionId: string = 'semantic-test-session-3';
+        const prompt: string = 'Explain quantum computing principles';
+        
+        const mockConversationHistory: ChatMessage[] = [
+          { role: 'system', content: 'You are a helpful AI assistant.' },
+          { role: 'user', content: prompt }
+        ];
+
+        const mockFormattedTemplate = '<|system|>\nYou are a helpful AI assistant.</s>\n<|user|>\nExplain quantum computing principles</s>\n<|assistant|>\n';
+
+        const mockOllamaResponse = {
+          response: 'Quantum computing is a revolutionary computing paradigm that leverages quantum mechanical phenomena to process information.',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:32:00.000Z',
+          done: true
+        };
+
+        const mockCacheStats = {
+          hit: false,
+          similarity: 0.45, // Below threshold of 0.85
+          responseTime: 135,
+          cacheSize: 5,
+          threshold: 0.85
+        };
+
+        const mockStats = {
+          message_count: 2,
+          memory_size: 512,
+          context_length: 128
+        };
+
+        // Mock semantic cache miss due to low similarity
+        semanticCacheService.findSimilarResponse.mockResolvedValue(null);
+        semanticCacheService.getCacheStats.mockReturnValue(mockCacheStats);
+        
+        // Mock conversation services
+        memoryService.buildConversationHistory.mockReturnValue(mockConversationHistory);
+        memoryService.formatChatTemplate.mockReturnValue(mockFormattedTemplate);
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
+        memoryService.getConversationStats.mockReturnValue(mockStats);
+
+        return request(app.getHttpServer())
+          .post('/api/v1/chat-semantic')
+          .send({
+            prompt,
+            session_id: sessionId
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(res.body.response).toContain('Quantum computing');
+            expect(res.body.semantic_cache.hit).toBe(false);
+            expect(res.body.semantic_cache.similarity).toBe(0.45);
+            expect(res.body.semantic_cache.cacheSize).toBe(5);
+            expect(semanticCacheService.cacheResponse).toHaveBeenCalledWith(prompt, mockOllamaResponse.response);
+            expect(ollamaService.generateText).toHaveBeenCalled();
+          });
+      });
+
+      it('should validate semantic chat request format', () => {
+        return request(app.getHttpServer())
+          .post('/api/v1/chat-semantic')
+          .send({
+            prompt: '', // Empty prompt should be rejected
+            session_id: 'test-session'
+          })
+          .expect(400)
+          .expect((res) => {
+            expect(res.body.message).toContain('Validation failed');
+          });
+      });
+
+      it('should handle semantic cache service errors gracefully', () => {
+        const sessionId: string = 'semantic-error-session';
+        const prompt: string = 'Test prompt for error handling';
+        
+        const mockConversationHistory: ChatMessage[] = [
+          { role: 'system', content: 'You are a helpful AI assistant.' },
+          { role: 'user', content: prompt }
+        ];
+
+        const mockFormattedTemplate = '<|system|>\nYou are a helpful AI assistant.</s>\n<|user|>\nTest prompt for error handling</s>\n<|assistant|>\n';
+
+        const mockOllamaResponse = {
+          response: 'This is a fallback response when semantic cache fails.',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:33:00.000Z',
+          done: true
+        };
+
+        const mockCacheStats = {
+          hit: false,
+          similarity: 0.0,
+          responseTime: 150,
+          cacheSize: 0,
+          threshold: 0.85
+        };
+
+        const mockStats = {
+          message_count: 2,
+          memory_size: 512,
+          context_length: 128
+        };
+
+        // Mock semantic cache service throwing an error
+        semanticCacheService.findSimilarResponse.mockRejectedValue(new Error('Semantic cache service unavailable'));
+        semanticCacheService.getCacheStats.mockReturnValue(mockCacheStats);
+        
+        // Mock conversation services (should still work despite cache error)
+        memoryService.buildConversationHistory.mockReturnValue(mockConversationHistory);
+        memoryService.formatChatTemplate.mockReturnValue(mockFormattedTemplate);
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
+        memoryService.getConversationStats.mockReturnValue(mockStats);
+
+        return request(app.getHttpServer())
+          .post('/api/v1/chat-semantic')
+          .send({
+            prompt,
+            session_id: sessionId
+          })
+          .expect(500) // Should fail when cache service throws error
+          .expect((res) => {
+            expect(res.body.message).toContain('error'); // Should return error message
+          });
+      });
+
+      it('should demonstrate performance improvement with cache hits', async () => {
+        const sessionId: string = 'performance-test-session';
+        const prompt1: string = 'What is machine learning?';
+        const prompt2: string = 'What is ML?'; // Semantically similar
+        
+        // First request - cache miss
+        const mockConversationHistory1: ChatMessage[] = [
+          { role: 'system', content: 'System' },
+          { role: 'user', content: prompt1 }
+        ];
+        
+        const mockOllamaResponse = {
+          response: 'Machine learning is a subset of artificial intelligence...',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:34:00.000Z',
+          done: true
+        };
+
+        const mockCacheStats1 = {
+          hit: false,
+          similarity: 0.0,
+          responseTime: 180, // Slow due to LLM generation
+          cacheSize: 0,
+          threshold: 0.85
+        };
+
+        // Second request - cache hit
+        const mockCachedResponse = {
+          embedding: [0.1, 0.2, 0.3],
+          response: mockOllamaResponse.response,
+          timestamp: Date.now() - 30000,
+          prompt: prompt1,
+          similarity: 0.94
+        };
+
+        const mockCacheStats2 = {
+          hit: true,
+          similarity: 0.94,
+          responseTime: 12, // Much faster due to cache hit
+          cacheSize: 1,
+          threshold: 0.85
+        };
+
+        // Setup mocks for first request (cache miss)
+        semanticCacheService.findSimilarResponse.mockResolvedValueOnce(null);
+        semanticCacheService.getCacheStats.mockReturnValueOnce(mockCacheStats1);
+        memoryService.buildConversationHistory.mockReturnValue(mockConversationHistory1);
+        memoryService.formatChatTemplate.mockReturnValue('<template>');
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
+        memoryService.getConversationStats.mockReturnValue({ message_count: 2, memory_size: 256, context_length: 64 });
+
+        // Setup mocks for second request (cache hit)
+        semanticCacheService.findSimilarResponse.mockResolvedValueOnce(mockCachedResponse);
+        semanticCacheService.getCacheStats.mockReturnValueOnce(mockCacheStats2);
+
+        const [response1, response2] = await Promise.all([
+          request(app.getHttpServer())
+            .post('/api/v1/chat-semantic')
+            .send({ prompt: prompt1, session_id: sessionId })
+            .expect(200),
+          request(app.getHttpServer())
+            .post('/api/v1/chat-semantic')
+            .send({ prompt: prompt2, session_id: sessionId })
+            .expect(200)
+        ]);
+
+        // Verify performance difference
+        expect(response1.body.semantic_cache.hit).toBe(false);
+        expect(response1.body.semantic_cache.responseTime).toBeGreaterThan(100);
+        
+        expect(response2.body.semantic_cache.hit).toBe(true);
+        expect(response2.body.semantic_cache.responseTime).toBeLessThan(50);
+        expect(response2.body.semantic_cache.similarity).toBeGreaterThan(0.85);
+        
+        // Both should return the same semantic content
+        expect(response1.body.response).toBe(response2.body.response);
+      });
+
+      it('should handle concurrent semantic cache requests correctly', async () => {
+        const sessionId: string = 'concurrent-semantic-session';
+        const prompts: string[] = [
+          'What is deep learning?',
+          'What is neural networks?',
+          'What is artificial neural networks?'
+        ];
+
+        // Mock responses for concurrent testing
+        const mockCachedResponse = {
+          embedding: [0.1, 0.2, 0.3],
+          response: 'Deep learning is a subset of machine learning...',
+          timestamp: Date.now() - 45000,
+          prompt: prompts[0],
+          similarity: 0.88
+        };
+
+        const mockCacheStats = [
+          { hit: false, similarity: 0.0, responseTime: 145, cacheSize: 0, threshold: 0.85 },
+          { hit: true, similarity: 0.91, responseTime: 18, cacheSize: 1, threshold: 0.85 },
+          { hit: true, similarity: 0.88, responseTime: 15, cacheSize: 1, threshold: 0.85 }
+        ];
+
+        // Setup mocks
+        semanticCacheService.findSimilarResponse
+          .mockResolvedValueOnce(null) // First request: cache miss
+          .mockResolvedValueOnce(mockCachedResponse) // Second request: cache hit
+          .mockResolvedValueOnce(mockCachedResponse); // Third request: cache hit
+
+        semanticCacheService.getCacheStats
+          .mockReturnValueOnce(mockCacheStats[0])
+          .mockReturnValueOnce(mockCacheStats[1])
+          .mockReturnValueOnce(mockCacheStats[2]);
+
+        // Mock other services
+        memoryService.buildConversationHistory.mockReturnValue([{ role: 'user', content: 'test' }]);
+        memoryService.formatChatTemplate.mockReturnValue('<template>');
+        ollamaService.generateText.mockResolvedValue({
+          response: mockCachedResponse.response,
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:35:00.000Z',
+          done: true
+        });
+        memoryService.getConversationStats.mockReturnValue({ message_count: 2, memory_size: 256, context_length: 64 });
+
+        const responses = await Promise.all(
+          prompts.map((prompt, index) =>
+            request(app.getHttpServer())
+              .post('/api/v1/chat-semantic')
+              .send({ prompt, session_id: `${sessionId}-${index}` })
+              .expect(200)
+          )
+        );
+
+        // Verify responses
+        expect(responses[0].body.semantic_cache.hit).toBe(false); // First request: miss
+        expect(responses[1].body.semantic_cache.hit).toBe(true);  // Second request: hit
+        expect(responses[2].body.semantic_cache.hit).toBe(true);  // Third request: hit
+
+        expect(responses[1].body.semantic_cache.similarity).toBeGreaterThan(0.85);
+        expect(responses[2].body.semantic_cache.similarity).toBeGreaterThan(0.85);
+
+        // All should return same semantic content
+        responses.forEach(response => {
+          expect(response.body.response).toBe(mockCachedResponse.response);
+        });
+      });
+
+      it('should handle edge cases in semantic similarity matching', () => {
+        const sessionId: string = 'edge-case-session';
+        const prompt: string = 'a'.repeat(500); // Very long prompt
+        
+        const mockConversationHistory: ChatMessage[] = [
+          { role: 'system', content: 'System' },
+          { role: 'user', content: prompt }
+        ];
+
+        const mockOllamaResponse = {
+          response: 'This is a response to a very long prompt.',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:36:00.000Z',
+          done: true
+        };
+
+        const mockCacheStats = {
+          hit: false,
+          similarity: 0.0,
+          responseTime: 200,
+          cacheSize: 0,
+          threshold: 0.85
+        };
+
+        const mockStats = {
+          message_count: 2,
+          memory_size: 512,
+          context_length: 128
+        };
+
+        // Mock services
+        semanticCacheService.findSimilarResponse.mockResolvedValue(null);
+        semanticCacheService.getCacheStats.mockReturnValue(mockCacheStats);
+        memoryService.buildConversationHistory.mockReturnValue(mockConversationHistory);
+        memoryService.formatChatTemplate.mockReturnValue('<template>');
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
+        memoryService.getConversationStats.mockReturnValue(mockStats);
+
+        return request(app.getHttpServer())
+          .post('/api/v1/chat-semantic')
+          .send({
+            prompt,
+            session_id: sessionId
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(res.body.response).toBe(mockOllamaResponse.response);
+            expect(res.body.semantic_cache.hit).toBe(false);
+            expect(semanticCacheService.findSimilarResponse).toHaveBeenCalledWith(prompt);
+          });
+      });
+    });
+
+    describe('Phase 3: Integration Scenarios', () => {
+      it('should demonstrate semantic caching across different conversation sessions', async () => {
+        const prompt1: string = 'Explain artificial intelligence';
+        const prompt2: string = 'What is AI?';
+        const session1: string = 'session-1';
+        const session2: string = 'session-2';
+
+        // First session establishes cache
+        const mockOllamaResponse = {
+          response: 'AI is the simulation of human intelligence in machines...',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:37:00.000Z',
+          done: true
+        };
+
+        const mockCachedResponse = {
+          embedding: [0.1, 0.2, 0.3],
+          response: mockOllamaResponse.response,
+          timestamp: Date.now() - 30000,
+          prompt: prompt1,
+          similarity: 0.89
+        };
+
+        // Setup mocks for first session (cache miss)
+        semanticCacheService.findSimilarResponse.mockResolvedValueOnce(null);
+        semanticCacheService.getCacheStats.mockReturnValueOnce({
+          hit: false, similarity: 0.0, responseTime: 160, cacheSize: 0, threshold: 0.85
+        });
+
+        // Setup mocks for second session (cache hit)
+        semanticCacheService.findSimilarResponse.mockResolvedValueOnce(mockCachedResponse);
+        semanticCacheService.getCacheStats.mockReturnValueOnce({
+          hit: true, similarity: 0.89, responseTime: 20, cacheSize: 1, threshold: 0.85
+        });
+
+        // Mock other services for both requests
+        memoryService.buildConversationHistory.mockReturnValue([{ role: 'user', content: 'test' }]);
+        memoryService.formatChatTemplate.mockReturnValue('<template>');
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
+        memoryService.getConversationStats.mockReturnValue({ message_count: 2, memory_size: 256, context_length: 64 });
+
+        const [response1, response2] = await Promise.all([
+          request(app.getHttpServer())
+            .post('/api/v1/chat-semantic')
+            .send({ prompt: prompt1, session_id: session1 }),
+          request(app.getHttpServer())
+            .post('/api/v1/chat-semantic')
+            .send({ prompt: prompt2, session_id: session2 })
+        ]);
+
+        expect(response1.status).toBe(200);
+        expect(response2.status).toBe(200);
+
+        expect(response1.body.semantic_cache.hit).toBe(false);
+        expect(response2.body.semantic_cache.hit).toBe(true);
+        expect(response2.body.semantic_cache.similarity).toBe(0.89);
+        expect(response2.body.semantic_cache.originalPrompt).toBe(prompt1);
+
+        // Semantic cache should work across sessions
+        expect(response1.body.response).toBe(response2.body.response);
+      });
+
+      it('should validate comprehensive semantic caching workflow', () => {
+        const sessionId: string = 'workflow-test-session';
+        const prompt: string = 'What are the benefits of renewable energy?';
+        
+        const mockConversationHistory: ChatMessage[] = [
+          { role: 'system', content: 'You are a helpful AI assistant.' },
+          { role: 'user', content: prompt }
+        ];
+
+        const mockFormattedTemplate = '<|system|>\nYou are a helpful AI assistant.</s>\n<|user|>\nWhat are the benefits of renewable energy?</s>\n<|assistant|>\n';
+
+        const mockOllamaResponse = {
+          response: 'Renewable energy offers numerous benefits including environmental protection, energy independence, and long-term cost savings.',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:38:00.000Z',
+          done: true
+        };
+
+        const mockCacheStats = {
+          hit: false,
+          similarity: 0.0,
+          responseTime: 140,
+          cacheSize: 3,
+          threshold: 0.85
+        };
+
+        const mockStats = {
+          message_count: 2,
+          memory_size: 512,
+          context_length: 128
+        };
+
+        // Mock full workflow
+        semanticCacheService.findSimilarResponse.mockResolvedValue(null);
+        semanticCacheService.getCacheStats.mockReturnValue(mockCacheStats);
+        memoryService.buildConversationHistory.mockReturnValue(mockConversationHistory);
+        memoryService.formatChatTemplate.mockReturnValue(mockFormattedTemplate);
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
+        memoryService.getConversationStats.mockReturnValue(mockStats);
+
+        return request(app.getHttpServer())
+          .post('/api/v1/chat-semantic')
+          .send({
+            prompt,
+            session_id: sessionId
+          })
+          .expect(200)
+          .expect((res) => {
+            // Verify response structure
+            expect(res.body).toHaveProperty('response');
+            expect(res.body).toHaveProperty('session_id');
+            expect(res.body).toHaveProperty('model');
+            expect(res.body).toHaveProperty('created_at');
+            expect(res.body).toHaveProperty('conversation_stats');
+            expect(res.body).toHaveProperty('semantic_cache');
+
+            // Verify semantic cache properties
+            expect(res.body.semantic_cache).toHaveProperty('hit');
+            expect(res.body.semantic_cache).toHaveProperty('similarity');
+            expect(res.body.semantic_cache).toHaveProperty('responseTime');
+            expect(res.body.semantic_cache).toHaveProperty('cacheSize');
+            expect(res.body.semantic_cache).toHaveProperty('threshold');
+
+            // Verify correct values
+            expect(res.body.response).toContain('Renewable energy');
+            expect(res.body.session_id).toBe(sessionId);
+            expect(res.body.semantic_cache.threshold).toBe(0.85);
+            expect(res.body.conversation_stats.message_count).toBe(2);
+
+            // Verify service interactions
+            expect(semanticCacheService.findSimilarResponse).toHaveBeenCalledWith(prompt);
+            expect(semanticCacheService.cacheResponse).toHaveBeenCalledWith(prompt, mockOllamaResponse.response);
+          });
+      });
+
+      it('should handle mixed Phase 2 and Phase 3 requests concurrently', async () => {
+        // Test concurrent requests across different phases
+        const semanticPrompt: string = 'What is blockchain technology?';
+        const chatPrompt: string = 'Tell me about databases';
+        const grpcFeatures = { sepal_length: 5.1, sepal_width: 3.5, petal_length: 1.4, petal_width: 0.2 };
+
+        // Mock responses for Phase 3 semantic chat
+        const mockSemanticResponse = {
+          response: 'Blockchain is a distributed ledger technology...',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:39:00.000Z',
+          done: true
+        };
+
+        const mockSemanticCacheStats = {
+          hit: false,
+          similarity: 0.0,
+          responseTime: 155,
+          cacheSize: 4,
+          threshold: 0.85
+        };
+
+        // Mock responses for Phase 2 regular chat
+        const mockChatResponse = {
+          response: 'Databases are structured collections of data...',
+          model: 'tinyllama',
+          created_at: '2025-08-04T10:39:00.000Z',
+          done: true
+        };
+
+        const mockChatStats = { message_count: 2, memory_size: 256, context_length: 64 };
+
+        // Mock responses for Phase 2 gRPC classification
+        const mockGrpcResponse = {
+          predicted_class: 'setosa',
+          predicted_class_index: 0,
+          class_names: ['setosa', 'versicolor', 'virginica'],
+          probabilities: [0.95, 0.03, 0.02],
+          confidence: 0.95,
+          model_info: { format: 'gRPC', version: '1.0', inference_time_ms: 1.5 },
+          input_features: grpcFeatures
+        };
+
+        // Setup mocks for all services
+        semanticCacheService.findSimilarResponse.mockResolvedValue(null);
+        semanticCacheService.getCacheStats.mockReturnValue(mockSemanticCacheStats);
+        
+        memoryService.buildConversationHistory.mockReturnValue([{ role: 'user', content: 'test' }]);
+        memoryService.formatChatTemplate.mockReturnValue('<template>');
+        ollamaService.generateText
+          .mockResolvedValueOnce(mockSemanticResponse)
+          .mockResolvedValueOnce(mockChatResponse);
+        memoryService.getConversationStats.mockReturnValue(mockChatStats);
+        
+        grpcService.classifyIrisViaGrpc.mockResolvedValue(mockGrpcResponse);
+
+        const [semanticResult, chatResult, grpcResult] = await Promise.all([
+          request(app.getHttpServer())
+            .post('/api/v1/chat-semantic')
+            .send({ prompt: semanticPrompt, session_id: 'semantic-mixed-session' }),
+          request(app.getHttpServer())
+            .post('/api/v1/chat')
+            .send({ prompt: chatPrompt, session_id: 'chat-mixed-session' }),
+          request(app.getHttpServer())
+            .post('/api/v1/classify-grpc')
+            .send(grpcFeatures)
+        ]);
+
+        // Verify all requests succeeded
+        expect(semanticResult.status).toBe(200);
+        expect(chatResult.status).toBe(200);
+        expect(grpcResult.status).toBe(200);
+
+        // Verify Phase 3 semantic response
+        expect(semanticResult.body.response).toContain('Blockchain');
+        expect(semanticResult.body).toHaveProperty('semantic_cache');
+        expect(semanticResult.body.semantic_cache.hit).toBe(false);
+
+        // Verify Phase 2 chat response (no semantic cache)
+        expect(chatResult.body.response).toContain('Databases');
+        expect(chatResult.body).not.toHaveProperty('semantic_cache');
+
+        // Verify Phase 2 gRPC response
+        expect(grpcResult.body.predicted_class).toBe('setosa');
+        expect(grpcResult.body.model_info.format).toBe('gRPC');
+      });
     });
   });
 });
