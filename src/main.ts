@@ -13,7 +13,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
   
-  // Enable API versioning
+  // Set global API prefix
+  app.setGlobalPrefix('api');
+  
+  // Enable API versioning with URI-based versioning
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',

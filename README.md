@@ -122,7 +122,7 @@ ai-backends-ts/
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/health` | GET | Service health and dependency status |
+| `/api/v1/health` | GET | Service health and dependency status |
 | `/api/v1/status` | GET | Inference service status and model info |
 
 ### Text Generation
@@ -211,7 +211,7 @@ The semantic caching endpoint uses **Xenova/all-MiniLM-L6-v2 transformer model**
 
 **Step 1: First query (cache miss)**
 ```bash
-curl -X POST http://localhost:3000/v1/api/v1/chat-semantic \
+curl -X POST http://localhost:3000/api/v1/chat-semantic \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "What is artificial intelligence?",
@@ -226,7 +226,7 @@ curl -X POST http://localhost:3000/v1/api/v1/chat-semantic \
 
 **Step 2: Semantically similar query (cache hit)**
 ```bash
-curl -X POST http://localhost:3000/v1/api/v1/chat-semantic \
+curl -X POST http://localhost:3000/api/v1/chat-semantic \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "What is artificial intelligence exactly?",
@@ -529,7 +529,7 @@ npm run batch-inference -- \
 
 1. **Health Check**:
    ```bash
-   curl http://localhost:3000/health
+   curl http://localhost:3000/api/v1/health
    ```
 
 2. **Basic Generation**:

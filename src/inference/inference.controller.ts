@@ -50,7 +50,7 @@ import {
  * proper validation, error handling, and security demonstrations
  */
 @ApiTags('inference')
-@Controller('api/v1')
+@Controller()
 export class InferenceController {
   constructor(private readonly inferenceService: InferenceService) {}
 
