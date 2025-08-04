@@ -33,6 +33,27 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Install and setup Ollama
+        run: |
+          # Install system dependencies
+          sudo apt-get update
+          sudo apt-get install -y curl
+          
+          # Install Ollama
+          curl -fsSL https://ollama.ai/install.sh | sh
+
+          # Start Ollama service in background
+          ollama serve &
+
+          # Wait for Ollama to be ready
+          timeout 60 bash -c 'until curl -f http://localhost:11434/api/tags; do sleep 2; done'
+
+          # Pull TinyLlama model
+          ollama pull tinyllama
+
+          # Verify model is available
+          ollama list
+
       - name: Run core integration tests
         run: npm run test:e2e
 
