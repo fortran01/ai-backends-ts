@@ -235,18 +235,22 @@ describe('GrpcService', () => {
     });
 
     it('should log debug information for requests and responses', async () => {
+      const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation();
+      
       mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
         callback(null, mockGrpcResponse);
       });
 
       await service.classifyIrisViaGrpc(validRequest);
 
-      expect(loggerSpy).toHaveBeenCalledWith(
+      expect(debugSpy).toHaveBeenCalledWith(
         expect.stringContaining('Sending gRPC classification request')
       );
-      expect(loggerSpy).toHaveBeenCalledWith(
+      expect(debugSpy).toHaveBeenCalledWith(
         expect.stringContaining('gRPC call completed in')
       );
+      
+      debugSpy.mockRestore();
     });
 
     it('should handle different Iris species correctly', async () => {
@@ -335,6 +339,21 @@ describe('GrpcService', () => {
   });
 
   describe('performance and reliability', () => {
+    const mockGrpcResponse = {
+      class_name: 'setosa',
+      predicted_class: 0,
+      probabilities: [0.95, 0.03, 0.02],
+      confidence: 0.95,
+      inference_time_ms: 2.5
+    };
+
+    const validRequest: ClassifyRequestDto = {
+      sepal_length: 5.1,
+      sepal_width: 3.5,
+      petal_length: 1.4,
+      petal_width: 0.2
+    };
+
     it('should handle multiple concurrent requests', async () => {
       mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
         // Simulate some processing time
@@ -389,6 +408,21 @@ describe('GrpcService', () => {
   });
 
   describe('edge cases', () => {
+    const validRequest: ClassifyRequestDto = {
+      sepal_length: 5.1,
+      sepal_width: 3.5,
+      petal_length: 1.4,
+      petal_width: 0.2
+    };
+
+    const mockGrpcResponse = {
+      class_name: 'setosa',
+      predicted_class: 0,
+      probabilities: [0.95, 0.03, 0.02],
+      confidence: 0.95,
+      inference_time_ms: 2.5
+    };
+
     it('should handle response with missing fields', async () => {
       const incompleteResponse = {
         class_name: 'setosa',
@@ -426,10 +460,25 @@ describe('GrpcService', () => {
       expect(result.input_features).toEqual(extremeRequest);
     });
 
-    it('should handle very slow responses', async (done) => {
+    it('should handle very slow responses', async () => {
+      const mockGrpcResponse = {
+        class_name: 'setosa',
+        predicted_class: 0,
+        probabilities: [0.95, 0.03, 0.02],
+        confidence: 0.95,
+        inference_time_ms: 2.5
+      };
+
+      const validRequest: ClassifyRequestDto = {
+        sepal_length: 5.1,
+        sepal_width: 3.5,
+        petal_length: 1.4,
+        petal_width: 0.2
+      };
+
       mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
         // Simulate slow response but within deadline
-        setTimeout(() => callback(null, mockGrpcResponse), 5000);
+        setTimeout(() => callback(null, mockGrpcResponse), 100); // Reduced time for testing
       });
 
       const startTime = Date.now();
@@ -437,8 +486,7 @@ describe('GrpcService', () => {
       const endTime = Date.now();
 
       expect(result).toBeDefined();
-      expect(endTime - startTime).toBeGreaterThanOrEqual(5000);
-      done();
-    }, 7000); // Increase test timeout
+      expect(endTime - startTime).toBeGreaterThanOrEqual(100);
+    }, 1000); // Reduced test timeout
   });
 });

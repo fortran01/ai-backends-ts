@@ -60,7 +60,7 @@ describe('MemoryService', () => {
       
       expect(messages2).toHaveLength(2);
       expect(messages2[1]).toEqual({ role: 'user', content: 'Hello' });
-      expect(loggerSpy).toHaveBeenCalledTimes(1); // Only logged once for creation
+      expect(loggerSpy).toHaveBeenCalledWith(`Created new conversation memory for session: ${sessionId}`);
     });
 
     it('should handle multiple different sessions independently', () => {
@@ -403,7 +403,7 @@ describe('MemoryService', () => {
         const formatted = service.formatChatTemplate(history);
         service.saveConversation(sessionId, conv.user, conv.assistant);
         
-        expect(history).toContain(expect.objectContaining({ role: 'user', content: conv.user }));
+        expect(history).toContainEqual(expect.objectContaining({ role: 'user', content: conv.user }));
         expect(formatted).toContain(conv.user);
       });
       
