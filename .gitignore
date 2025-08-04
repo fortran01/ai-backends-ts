@@ -177,10 +177,10 @@ coverage/
 *.sqlite3
 
 # Optional: Model files (if you have ML models)
-*.pkl
-*.onnx
-*.h5
-*.model
+#*.pkl
+#*.onnx
+#*.h5
+#*.model
 
 # Optional: API documentation generated files
 docs/api/
