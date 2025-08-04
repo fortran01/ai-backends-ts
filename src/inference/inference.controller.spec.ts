@@ -914,13 +914,37 @@ describe('InferenceController', () => {
               predicted_class: 'setosa',
               predicted_class_index: 0,
               probabilities: [0.95, 0.03, 0.02],
-              confidence: 0.95
+              confidence: 0.95,
+              class_names: ['setosa', 'versicolor', 'virginica'],
+              input_features: {
+                sepal_length: 5.1,
+                sepal_width: 3.5,
+                petal_length: 1.4,
+                petal_width: 0.2
+              },
+              model_info: {
+                format: 'ONNX',
+                version: '1.0',
+                inference_time_ms: 12.5
+              }
             },
             grpc_result: {
               predicted_class: 'setosa',
               predicted_class_index: 0,
               probabilities: [0.95, 0.03, 0.02],
-              confidence: 0.95
+              confidence: 0.95,
+              class_names: ['setosa', 'versicolor', 'virginica'],
+              input_features: {
+                sepal_length: 5.1,
+                sepal_width: 3.5,
+                petal_length: 1.4,
+                petal_width: 0.2
+              },
+              model_info: {
+                format: 'ONNX',
+                version: '1.0',
+                inference_time_ms: 5.2
+              }
             }
           }
         };
@@ -971,13 +995,37 @@ describe('InferenceController', () => {
               predicted_class: 'versicolor',
               predicted_class_index: 1,
               probabilities: [0.02, 0.92, 0.06],
-              confidence: 0.92
+              confidence: 0.92,
+              class_names: ['setosa', 'versicolor', 'virginica'],
+              input_features: {
+                sepal_length: 6.2,
+                sepal_width: 3.0,
+                petal_length: 4.5,
+                petal_width: 1.5
+              },
+              model_info: {
+                format: 'ONNX',
+                version: '1.0',
+                inference_time_ms: 15.0
+              }
             },
             grpc_result: {
               predicted_class: 'versicolor',
               predicted_class_index: 1,
               probabilities: [0.02, 0.92, 0.06],
-              confidence: 0.92
+              confidence: 0.92,
+              class_names: ['setosa', 'versicolor', 'virginica'],
+              input_features: {
+                sepal_length: 6.2,
+                sepal_width: 3.0,
+                petal_length: 4.5,
+                petal_width: 1.5
+              },
+              model_info: {
+                format: 'ONNX',
+                version: '1.0',
+                inference_time_ms: 6.0
+              }
             }
           }
         };
@@ -1028,13 +1076,37 @@ describe('InferenceController', () => {
               predicted_class: 'virginica',
               predicted_class_index: 2,
               probabilities: [0.01, 0.05, 0.94],
-              confidence: 0.94
+              confidence: 0.94,
+              class_names: ['setosa', 'versicolor', 'virginica'],
+              input_features: {
+                sepal_length: 6.3,
+                sepal_width: 3.3,
+                petal_length: 6.0,
+                petal_width: 2.5
+              },
+              model_info: {
+                format: 'ONNX',
+                version: '1.0',
+                inference_time_ms: 14.2
+              }
             },
             grpc_result: {
               predicted_class: 'virginica',
               predicted_class_index: 2,
               probabilities: [0.01, 0.05, 0.94],
-              confidence: 0.94
+              confidence: 0.94,
+              class_names: ['setosa', 'versicolor', 'virginica'],
+              input_features: {
+                sepal_length: 6.3,
+                sepal_width: 3.3,
+                petal_length: 6.0,
+                petal_width: 2.5
+              },
+              model_info: {
+                format: 'ONNX',
+                version: '1.0',
+                inference_time_ms: 5.8
+              }
             }
           }
         };
@@ -1318,13 +1390,37 @@ describe('InferenceController', () => {
             predicted_class: 'setosa',
             predicted_class_index: 0,
             probabilities: [0.95, 0.03, 0.02],
-            confidence: 0.95
+            confidence: 0.95,
+            class_names: ['setosa', 'versicolor', 'virginica'],
+            input_features: {
+              sepal_length: 5.1,
+              sepal_width: 3.5,
+              petal_length: 1.4,
+              petal_width: 0.2
+            },
+            model_info: {
+              format: 'ONNX',
+              version: '1.0',
+              inference_time_ms: 18.5
+            }
           },
           grpc_result: {
             predicted_class: 'setosa',
             predicted_class_index: 0,
             probabilities: [0.95, 0.03, 0.02],
-            confidence: 0.95
+            confidence: 0.95,
+            class_names: ['setosa', 'versicolor', 'virginica'],
+            input_features: {
+              sepal_length: 5.1,
+              sepal_width: 3.5,
+              petal_length: 1.4,
+              petal_width: 0.2
+            },
+            model_info: {
+              format: 'ONNX',
+              version: '1.0',
+              inference_time_ms: 7.2
+            }
           }
         }
       };

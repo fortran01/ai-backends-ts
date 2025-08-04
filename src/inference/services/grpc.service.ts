@@ -65,20 +65,12 @@ export class GrpcService implements OnModuleDestroy {
         oneofs: true,
       });
 
-      const inferenceProto = grpc.loadPackageDefinition(packageDefinition).inference as InferencePackage;
+      const inferenceProto = grpc.loadPackageDefinition(packageDefinition).inference as unknown as InferencePackage;
 
       // Create gRPC client
       this.grpcClient = new inferenceProto.InferenceService(
         this.grpcEndpoint,
-        grpc.credentials.createInsecure(),
-        {
-          'grpc.keepalive_time_ms': 30000,
-          'grpc.keepalive_timeout_ms': 5000,
-          'grpc.keepalive_permit_without_calls': true,
-          'grpc.http2.max_pings_without_data': 0,
-          'grpc.http2.min_time_between_pings_ms': 10000,
-          'grpc.http2.min_ping_interval_without_data_ms': 300000
-        }
+        grpc.credentials.createInsecure()
       );
 
       this.logger.log(`gRPC client initialized for endpoint: ${this.grpcEndpoint}`);
@@ -100,7 +92,7 @@ export class GrpcService implements OnModuleDestroy {
       const deadline = new Date();
       deadline.setSeconds(deadline.getSeconds() + 5);
 
-      this.grpcClient.waitForReady(deadline, (error: Error | null) => {
+      this.grpcClient.waitForReady(deadline, (error?: Error) => {
         if (error) {
           this.logger.debug(`gRPC server not available: ${error.message}`);
           resolve(false);
@@ -164,15 +156,15 @@ export class GrpcService implements OnModuleDestroy {
 
         // Transform gRPC response to DTO format
         const result: ClassifyResponseDto = {
-          predicted_class: response.class_name,
-          predicted_class_index: response.predicted_class,
+          predicted_class: response?.class_name || '',
+          predicted_class_index: response?.predicted_class || 0,
           class_names: ['setosa', 'versicolor', 'virginica'],
-          probabilities: response.probabilities,
-          confidence: response.confidence,
+          probabilities: response?.probabilities || [],
+          confidence: response?.confidence || 0,
           model_info: {
             format: 'gRPC',
             version: '1.0',
-            inference_time_ms: response.inference_time_ms
+            inference_time_ms: response?.inference_time_ms || 0
           },
           input_features: {
             sepal_length: request.sepal_length,

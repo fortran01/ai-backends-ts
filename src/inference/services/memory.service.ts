@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 /**
  * Interface for chat messages following TinyLlama chat template format
  */
-interface ChatMessage {
+export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }

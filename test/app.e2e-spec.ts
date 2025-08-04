@@ -4,7 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { OllamaService } from '../src/inference/services/ollama.service';
 import { OnnxService } from '../src/inference/services/onnx.service';
-import { MemoryService } from '../src/inference/services/memory.service';
+import { MemoryService, ChatMessage } from '../src/inference/services/memory.service';
 import { GrpcService } from '../src/inference/services/grpc.service';
 import { HttpInferenceService } from '../src/inference/services/http.service';
 
@@ -683,7 +683,7 @@ describe('AI Backends API (e2e)', () => {
   describe('Phase 2: Stateful Chat API', () => {
     describe('/api/v1/chat (POST)', () => {
       it('should handle new conversation successfully', () => {
-        const mockConversationHistory = [
+        const mockConversationHistory: ChatMessage[] = [
           { role: 'system', content: 'You are a helpful AI assistant.' },
           { role: 'user', content: 'Hello, what is machine learning?' }
         ];
@@ -705,7 +705,7 @@ describe('AI Backends API (e2e)', () => {
 
         memoryService.buildConversationHistory.mockReturnValue(mockConversationHistory);
         memoryService.formatChatTemplate.mockReturnValue(mockFormattedTemplate);
-        ollamaService.callOllamaWithHistory.mockResolvedValue(mockOllamaResponse);
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
         memoryService.getConversationStats.mockReturnValue(mockStats);
 
         return request(app.getHttpServer())
@@ -725,7 +725,7 @@ describe('AI Backends API (e2e)', () => {
       });
 
       it('should handle follow-up conversation with context', () => {
-        const followUpHistory = [
+        const followUpHistory: ChatMessage[] = [
           { role: 'system', content: 'You are a helpful AI assistant.' },
           { role: 'user', content: 'What is AI?' },
           { role: 'assistant', content: 'AI is artificial intelligence...' },
@@ -749,7 +749,7 @@ describe('AI Backends API (e2e)', () => {
 
         memoryService.buildConversationHistory.mockReturnValue(followUpHistory);
         memoryService.formatChatTemplate.mockReturnValue(mockFormattedTemplate);
-        ollamaService.callOllamaWithHistory.mockResolvedValue(mockOllamaResponse);
+        ollamaService.generateText.mockResolvedValue(mockOllamaResponse);
         memoryService.getConversationStats.mockReturnValue(mockStats);
 
         return request(app.getHttpServer())
@@ -807,8 +807,8 @@ describe('AI Backends API (e2e)', () => {
           done: true
         };
 
-        const mockHistory1 = [{ role: 'system', content: 'System' }, { role: 'user', content: 'Hello 1' }];
-        const mockHistory2 = [{ role: 'system', content: 'System' }, { role: 'user', content: 'Hello 2' }];
+        const mockHistory1: ChatMessage[] = [{ role: 'system', content: 'System' }, { role: 'user', content: 'Hello 1' }];
+        const mockHistory2: ChatMessage[] = [{ role: 'system', content: 'System' }, { role: 'user', content: 'Hello 2' }];
 
         memoryService.buildConversationHistory
           .mockReturnValueOnce(mockHistory1)
@@ -817,7 +817,7 @@ describe('AI Backends API (e2e)', () => {
         memoryService.formatChatTemplate
           .mockReturnValue('<|system|>\nSystem</s>\n<|user|>\nHello</s>\n<|assistant|>\n');
 
-        ollamaService.callOllamaWithHistory
+        ollamaService.generateText
           .mockResolvedValueOnce(session1Response)
           .mockResolvedValueOnce(session2Response);
 
@@ -846,7 +846,7 @@ describe('AI Backends API (e2e)', () => {
           { role: 'user', content: 'Test' }
         ]);
         memoryService.formatChatTemplate.mockReturnValue('<|system|>\nSystem</s>\n<|user|>\nTest</s>\n<|assistant|>\n');
-        ollamaService.callOllamaWithHistory.mockRejectedValue(new Error('Ollama service unavailable'));
+        ollamaService.generateText.mockRejectedValue(new Error('Ollama service unavailable'));
 
         return request(app.getHttpServer())
           .post('/api/v1/chat')
@@ -1167,7 +1167,7 @@ describe('AI Backends API (e2e)', () => {
   describe('Phase 2: Integration Scenarios', () => {
     it('should handle concurrent Phase 2 requests across different endpoints', async () => {
       // Mock responses for concurrent testing
-      const chatHistory = [{ role: 'system', content: 'System' }, { role: 'user', content: 'Test' }];
+      const chatHistory: ChatMessage[] = [{ role: 'system', content: 'System' }, { role: 'user', content: 'Test' }];
       const chatTemplate = '<|system|>\nSystem</s>\n<|user|>\nTest</s>\n<|assistant|>\n';
       const chatResponse = {
         response: 'Test response',
@@ -1200,7 +1200,7 @@ describe('AI Backends API (e2e)', () => {
       // Set up mocks
       memoryService.buildConversationHistory.mockReturnValue(chatHistory);
       memoryService.formatChatTemplate.mockReturnValue(chatTemplate);
-      ollamaService.callOllamaWithHistory.mockResolvedValue(chatResponse);
+      ollamaService.generateText.mockResolvedValue(chatResponse);
       memoryService.getConversationStats.mockReturnValue(chatStats);
       grpcService.classifyIrisViaGrpc.mockResolvedValue(grpcResponse);
       httpInferenceService.classifyIrisViaHttp.mockResolvedValue(httpResponse);
@@ -1230,13 +1230,13 @@ describe('AI Backends API (e2e)', () => {
       const sessionId = 'memory-test-session';
       
       // First conversation turn
-      const turn1History = [{ role: 'system', content: 'System' }, { role: 'user', content: 'Hello' }];
+      const turn1History: ChatMessage[] = [{ role: 'system', content: 'System' }, { role: 'user', content: 'Hello' }];
       const turn1Template = '<|system|>\nSystem</s>\n<|user|>\nHello</s>\n<|assistant|>\n';
       const turn1Response = { response: 'Hi there!', model: 'tinyllama', created_at: '2025-08-03T10:30:00.000Z', done: true };
       const turn1Stats = { message_count: 2, memory_size: 256, context_length: 64 };
 
       // Second conversation turn (with accumulated memory)
-      const turn2History = [
+      const turn2History: ChatMessage[] = [
         { role: 'system', content: 'System' },
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi there!' },
@@ -1249,13 +1249,13 @@ describe('AI Backends API (e2e)', () => {
       // Set up mocks for first turn
       memoryService.buildConversationHistory.mockReturnValueOnce(turn1History);
       memoryService.formatChatTemplate.mockReturnValueOnce(turn1Template);
-      ollamaService.callOllamaWithHistory.mockResolvedValueOnce(turn1Response);
+      ollamaService.generateText.mockResolvedValueOnce(turn1Response);
       memoryService.getConversationStats.mockReturnValueOnce(turn1Stats);
 
       // Set up mocks for second turn
       memoryService.buildConversationHistory.mockReturnValueOnce(turn2History);
       memoryService.formatChatTemplate.mockReturnValueOnce(turn2Template);
-      ollamaService.callOllamaWithHistory.mockResolvedValueOnce(turn2Response);
+      ollamaService.generateText.mockResolvedValueOnce(turn2Response);
       memoryService.getConversationStats.mockReturnValueOnce(turn2Stats);
 
       const [response1, response2] = await Promise.all([
