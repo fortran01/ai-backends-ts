@@ -68,10 +68,10 @@ jobs:
           sleep 10
           
           # Test health endpoint
-          curl -f http://localhost:3000/health || exit 1
+          curl -f http://localhost:3000/api/health || exit 1
           
           # Test API status
-          curl -f http://localhost:3000/api/v1/status || exit 1
+          curl -f http://localhost:3000/api/status || exit 1
           
           # Test basic text generation (Phase 1)
           curl -f -X POST http://localhost:3000/api/v1/generate \
