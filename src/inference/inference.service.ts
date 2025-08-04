@@ -5,6 +5,7 @@ import { OnnxService } from './services/onnx.service';
 import { MemoryService } from './services/memory.service';
 import { GrpcService } from './services/grpc.service';
 import { HttpInferenceService } from './services/http.service';
+import { SemanticCacheService } from './services/semantic-cache.service';
 import { 
   GenerateRequestDto, 
   GenerateResponseDto, 
@@ -32,7 +33,8 @@ export class InferenceService {
     private readonly onnxService: OnnxService,
     private readonly memoryService: MemoryService,
     private readonly grpcService: GrpcService,
-    private readonly httpInferenceService: HttpInferenceService
+    private readonly httpInferenceService: HttpInferenceService,
+    private readonly semanticCacheService: SemanticCacheService
   ) {}
 
   /**
@@ -449,6 +451,103 @@ export class InferenceService {
   }
 
   /**
+   * Stateful chat with semantic caching using vector embeddings
+   * 
+   * @param request - Chat request with prompt and session ID
+   * @returns Chat response with semantic cache analysis and performance metrics
+   */
+  public async chatSemantic(request: ChatRequestDto): Promise<Record<string, unknown>> {
+    const startTime: number = Date.now();
+    
+    // Check semantic cache for similar prompts
+    const cachedResponse = await this.semanticCacheService.findSimilarResponse(request.prompt);
+    
+    if (cachedResponse) {
+      // Cache hit - return cached response with statistics
+      const responseTime: number = Date.now() - startTime;
+      const cacheStats = this.semanticCacheService.getCacheStats(true, cachedResponse.similarity || 0, responseTime);
+      
+      // Still update conversation memory for session tracking
+      this.memoryService.saveConversation(
+        request.session_id,
+        request.prompt,
+        cachedResponse.response
+      );
+      
+      const conversationStats = this.memoryService.getConversationStats(request.session_id);
+      
+      return {
+        response: cachedResponse.response,
+        session_id: request.session_id,
+        model: 'tinyllama',
+        timestamp: new Date().toISOString(),
+        conversation_stats: conversationStats,
+        semantic_cache: {
+          ...cacheStats,
+          originalPrompt: cachedResponse.prompt
+        }
+      };
+    }
+    
+    // Cache miss - generate new response
+    const chatResponse: ChatResponseDto = await this.chat(request);
+    
+    // Cache the new response
+    await this.semanticCacheService.cacheResponse(request.prompt, chatResponse.response);
+    
+    const responseTime: number = Date.now() - startTime;
+    const cacheStats = this.semanticCacheService.getCacheStats(false, 0, responseTime);
+    
+    return {
+      ...chatResponse,
+      semantic_cache: cacheStats
+    };
+  }
+
+  /**
+   * Enhanced text generation with additional metadata (API v2)
+   * 
+   * @param request - Generation request with prompt
+   * @returns Enhanced response with versioning information and detailed metadata
+   */
+  public async generateTextV2(request: GenerateRequestDto): Promise<Record<string, unknown>> {
+    const startTime: number = Date.now();
+    const requestId: string = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Generate text using the base service
+    const baseResponse: GenerateResponseDto = await this.generateText(request);
+    
+    const endTime: number = Date.now();
+    const responseTime: number = endTime - startTime;
+    
+    // Estimate token count (rough approximation: ~4 characters per token)
+    const estimatedTokens: number = Math.ceil(baseResponse.response.length / 4);
+    
+    // Enhanced response with additional metadata
+    return {
+      response: baseResponse.response,
+      model: baseResponse.model,
+      timestamp: new Date().toISOString(),
+      api_version: 'v2',
+      performance_metrics: {
+        response_time_ms: responseTime,
+        tokens_estimated: estimatedTokens,
+        chars_generated: baseResponse.response.length
+      },
+      request_metadata: {
+        prompt_length: request.prompt.length,
+        request_id: requestId,
+        server_info: 'inference-server-v2.1.0'
+      },
+      model_info: {
+        name: 'tinyllama',
+        endpoint: 'http://localhost:11434',
+        framework: 'Ollama'
+      }
+    };
+  }
+
+  /**
    * Get service status for health checks
    * 
    * @returns Service status information
@@ -471,7 +570,12 @@ export class InferenceService {
         model_info: this.onnxService.getModelInfo()
       },
       grpc: grpcStatus,
-      http: httpStatus
+      http: httpStatus,
+      semantic_cache: {
+        available: true,
+        cache_size: this.semanticCacheService.getCacheSize(),
+        embedding_model: 'Xenova/all-MiniLM-L6-v2'
+      }
     };
   }
 }

@@ -5,8 +5,11 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  UsePipes 
+  UsePipes,
+  UseInterceptors,
+  Version
 } from '@nestjs/common';
+import { CacheInterceptor } from '@nestjs/cache-manager';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -201,16 +204,101 @@ export class InferenceController {
   }
 
   /**
-   * Iris species classification using ONNX model
+   * Stateful chat with semantic caching using vector embeddings
+   * 
+   * @param request - Chat request containing prompt and session ID
+   * @returns Chat response with semantic cache analysis and performance metrics
+   */
+  @Post('chat-semantic')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Stateful chat with semantic caching',
+    description: 'Demonstrates semantic caching using vector embeddings and cosine similarity. Caches responses based on semantic meaning rather than exact text matches. Uses Xenova/all-MiniLM-L6-v2 model for embeddings with 0.85 similarity threshold.'
+  })
+  @ApiBody({ 
+    type: ChatRequestDtoClass,
+    description: 'Chat request with prompt and session identifier for semantic caching demonstration',
+    examples: {
+      firstQuery: {
+        summary: 'First semantic query (cache miss)',
+        value: { 
+          prompt: 'What is artificial intelligence?',
+          session_id: 'semantic-demo-session'
+        }
+      },
+      similarQuery: {
+        summary: 'Semantically similar query (should be cache hit)',
+        value: { 
+          prompt: 'What is AI?',
+          session_id: 'semantic-demo-session'
+        }
+      },
+      relatedQuery: {
+        summary: 'Related but different query',
+        value: { 
+          prompt: 'Explain machine learning to me',
+          session_id: 'semantic-demo-session'
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Semantic chat response generated successfully with cache analysis',
+    schema: {
+      type: 'object',
+      properties: {
+        response: { type: 'string', example: 'Artificial intelligence (AI) is...' },
+        session_id: { type: 'string', example: 'semantic-demo-session' },
+        model: { type: 'string', example: 'tinyllama' },
+        timestamp: { type: 'string', example: '2024-01-15T10:30:00Z' },
+        conversation_stats: {
+          type: 'object',
+          properties: {
+            turn_count: { type: 'number', example: 3 },
+            total_messages: { type: 'number', example: 6 },
+            memory_usage: { type: 'number', example: 1250 }
+          }
+        },
+        semantic_cache: {
+          type: 'object',
+          properties: {
+            hit: { type: 'boolean', example: true },
+            similarity: { type: 'number', example: 0.92 },
+            responseTime: { type: 'number', example: 45 },
+            cacheSize: { type: 'number', example: 15 },
+            threshold: { type: 'number', example: 0.85 },
+            originalPrompt: { type: 'string', example: 'What is artificial intelligence?' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid input (empty prompt, invalid session ID format, etc.)' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'Ollama service unavailable, memory service error, or semantic cache processing failed' 
+  })
+  @UsePipes(new ZodValidationPipe(ChatRequestSchema))
+  public async chatSemantic(@Body() request: ChatRequestDto): Promise<Record<string, unknown>> {
+    return this.inferenceService.chatSemantic(request);
+  }
+
+  /**
+   * Iris species classification using ONNX model with exact caching
    * 
    * @param request - Classification request with Iris features
    * @returns Prediction results with probabilities and confidence scores
    */
   @Post('classify')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(CacheInterceptor)
   @ApiOperation({ 
-    summary: 'Classify Iris species using ONNX model',
-    description: 'Performs Iris species classification using a RandomForest model in ONNX format. Demonstrates secure model serving with comprehensive input validation.'
+    summary: 'Classify Iris species using ONNX model with exact caching',
+    description: 'Performs Iris species classification using a RandomForest model in ONNX format with exact caching enabled. Identical requests are cached for improved performance. Demonstrates secure model serving with comprehensive input validation.'
   })
   @ApiBody({ 
     type: ClassifyRequestDtoClass,
@@ -552,5 +640,74 @@ export class InferenceController {
   })
   public async getStatus(): Promise<Record<string, unknown>> {
     return this.inferenceService.getServiceStatus();
+  }
+
+  /**
+   * Enhanced text generation endpoint with additional metadata (API v2)
+   * 
+   * @param request - Generation request containing prompt
+   * @returns Generated text response with enhanced metadata and versioning information
+   */
+  @Post('generate')
+  @Version('2')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Generate text using TinyLlama model with enhanced features (v2)',
+    description: 'Enhanced version of the text generation endpoint with additional metadata including API version tracking, model information, response times, token estimation, and comprehensive request/response statistics. Demonstrates API versioning strategy.'
+  })
+  @ApiBody({ 
+    type: GenerateRequestDtoClass,
+    description: 'Text prompt for enhanced generation (1-500 characters)',
+    examples: {
+      enhanced: {
+        summary: 'Enhanced generation example',
+        value: { prompt: 'Explain the benefits of renewable energy sources' }
+      },
+      technical: {
+        summary: 'Technical documentation request',
+        value: { prompt: 'How do solar panels convert sunlight into electricity?' }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Enhanced text generated successfully with detailed metadata',
+    schema: {
+      type: 'object',
+      properties: {
+        response: { type: 'string', example: 'Renewable energy sources offer numerous benefits...' },
+        model: { type: 'string', example: 'tinyllama' },
+        timestamp: { type: 'string', example: '2024-01-15T10:30:00Z' },
+        api_version: { type: 'string', example: 'v2' },
+        performance_metrics: {
+          type: 'object',
+          properties: {
+            response_time_ms: { type: 'number', example: 2450 },
+            tokens_estimated: { type: 'number', example: 85 },
+            chars_generated: { type: 'number', example: 412 }
+          }
+        },
+        request_metadata: {
+          type: 'object',
+          properties: {
+            prompt_length: { type: 'number', example: 52 },
+            request_id: { type: 'string', example: 'req_abc123def456' },
+            server_info: { type: 'string', example: 'inference-server-v2.1.0' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid input (empty prompt, too long, etc.)' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'Ollama service unavailable or model not found' 
+  })
+  @UsePipes(new ZodValidationPipe(GenerateRequestSchema))
+  public async generateTextV2(@Body() request: GenerateRequestDto): Promise<Record<string, unknown>> {
+    return this.inferenceService.generateTextV2(request);
   }
 }
