@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { AxiosError } from 'axios';
 import { ClassifyRequestDto, ClassifyResponseDto } from '../dto/classify.dto';
 
 /**
@@ -87,21 +88,25 @@ export class HttpInferenceService {
       };
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const totalTime: number = Date.now() - startTime;
       this.logger.error(`HTTP call failed after ${totalTime}ms:`, error);
 
       // Convert HTTP errors to appropriate error messages
-      if (error.code === 'ECONNREFUSED') {
+      const axiosError = error as AxiosError;
+      if (axiosError.code === 'ECONNREFUSED') {
         throw new Error('HTTP inference server unavailable. Please ensure the HTTP server is running on port 3001.');
-      } else if (error.code === 'ETIMEDOUT') {
+      } else if (axiosError.code === 'ETIMEDOUT') {
         throw new Error('HTTP call timeout. Server took too long to respond.');
-      } else if (error.response?.status === 400) {
-        throw new Error(`Invalid request: ${error.response.data?.error || error.message}`);
-      } else if (error.response?.status >= 500) {
-        throw new Error(`HTTP server error: ${error.response.data?.error || error.message}`);
+      } else if (axiosError.response?.status === 400) {
+        const errorMessage: string = (axiosError.response.data as { error?: string })?.error ?? axiosError.message ?? 'Bad Request';
+        throw new Error(`Invalid request: ${errorMessage}`);
+      } else if (axiosError.response?.status && axiosError.response.status >= 500) {
+        const errorMessage: string = (axiosError.response.data as { error?: string })?.error ?? axiosError.message ?? 'Internal Server Error';
+        throw new Error(`HTTP server error: ${errorMessage}`);
       } else {
-        throw new Error(`HTTP error: ${error.message}`);
+        const errorMessage = axiosError.message || (error as Error).message || 'Unknown error';
+        throw new Error(`HTTP error: ${errorMessage}`);
       }
     }
   }

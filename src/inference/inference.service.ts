@@ -333,7 +333,7 @@ export class InferenceService {
             date: customDate,
             regexp: /test-pattern/gi,
             buffer: buffer,
-            function: () => 'this function cannot serialize',
+            function: (): string => 'this function cannot serialize',
             symbol: Symbol('test-symbol')
           }
         }
@@ -341,7 +341,7 @@ export class InferenceService {
     };
 
     // Custom JSON serialization with replacer function
-    const customReplacer = (key: string, value: any): any => {
+    const customReplacer = (key: string, value: unknown): unknown => {
       // Handle BigInt serialization
       if (typeof value === 'bigint') {
         return `BigInt(${value.toString()})`;

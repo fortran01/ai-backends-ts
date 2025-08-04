@@ -1065,46 +1065,6 @@ describe('AI Backends API (e2e)', () => {
   describe('Phase 2: Performance Comparison API', () => {
     describe('/api/v1/classify-benchmark (POST)', () => {
       it('should compare HTTP vs gRPC performance successfully', () => {
-        const mockPerformanceResponse = {
-          summary: {
-            iterations: 10,
-            http_avg_time_ms: 12.5,
-            grpc_avg_time_ms: 5.2,
-            speedup_factor: 2.4,
-            grpc_advantage_percent: 58.4
-          },
-          http_results: {
-            protocol: 'HTTP/REST',
-            successful_requests: 10,
-            failed_requests: 0,
-            total_time_ms: 125.0,
-            avg_time_ms: 12.5,
-            min_time_ms: 10.1,
-            max_time_ms: 15.8
-          },
-          grpc_results: {
-            protocol: 'gRPC',
-            successful_requests: 10,
-            failed_requests: 0,
-            total_time_ms: 52.0,
-            avg_time_ms: 5.2,
-            min_time_ms: 4.1,
-            max_time_ms: 6.8
-          },
-          classification_result: {
-            predicted_class: 'setosa',
-            predicted_class_index: 0,
-            probabilities: [0.95, 0.03, 0.02],
-            confidence: 0.95
-          },
-          input_features: {
-            sepal_length: 5.1,
-            sepal_width: 3.5,
-            petal_length: 1.4,
-            petal_width: 0.2,
-            iterations: 10
-          }
-        };
 
         // Mock the InferenceService.performanceComparison method through the app
         // Note: This would need to be properly mocked at the service level in a real implementation

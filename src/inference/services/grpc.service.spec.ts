@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
 import { GrpcService } from './grpc.service';
-import { ClassifyRequestDto, ClassifyResponseDto } from '../dto/classify.dto';
+import { ClassifyRequestDto } from '../dto/classify.dto';
 import * as grpc from '@grpc/grpc-js';
 
 /**
@@ -59,8 +59,8 @@ describe('GrpcService', () => {
 
   describe('isGrpcServerAvailable', () => {
     it('should return true when gRPC server is available', async () => {
-      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: Function) => {
-        callback(null); // No error means server is ready
+      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: (error?: Error) => void) => {
+        callback(undefined); // No error means server is ready
       });
 
       const result = await service.isGrpcServerAvailable();
@@ -70,7 +70,7 @@ describe('GrpcService', () => {
     });
 
     it('should return false when gRPC server is not available', async () => {
-      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: Function) => {
+      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: (error?: Error) => void) => {
         callback(new Error('Connection refused'));
       });
 
@@ -89,7 +89,7 @@ describe('GrpcService', () => {
     });
 
     it('should handle timeout correctly', async () => {
-      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: Function) => {
+      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: (error?: Error) => void) => {
         const now = new Date();
         expect(deadline.getTime()).toBeGreaterThan(now.getTime());
         expect(deadline.getTime() - now.getTime()).toBeLessThanOrEqual(5000);
@@ -119,7 +119,7 @@ describe('GrpcService', () => {
     };
 
     it('should successfully classify iris via gRPC', async () => {
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         expect(request).toEqual({
           sepal_length: validRequest.sepal_length,
           sepal_width: validRequest.sepal_width,
@@ -164,7 +164,7 @@ describe('GrpcService', () => {
         message: 'Connection refused'
       };
 
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback(unavailableError, null);
       });
 
@@ -178,7 +178,7 @@ describe('GrpcService', () => {
         message: 'Deadline exceeded'
       };
 
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback(timeoutError, null);
       });
 
@@ -192,7 +192,7 @@ describe('GrpcService', () => {
         message: 'Invalid input parameters'
       };
 
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback(invalidArgError, null);
       });
 
@@ -206,7 +206,7 @@ describe('GrpcService', () => {
         message: 'Internal server error'
       };
 
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback(genericError, null);
       });
 
@@ -217,7 +217,7 @@ describe('GrpcService', () => {
     it('should set correct deadline for gRPC call', async () => {
       let capturedOptions: any;
       
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         capturedOptions = options;
         callback(null, mockGrpcResponse);
       });
@@ -237,7 +237,7 @@ describe('GrpcService', () => {
     it('should log debug information for requests and responses', async () => {
       const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation();
       
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback(null, mockGrpcResponse);
       });
 
@@ -262,7 +262,7 @@ describe('GrpcService', () => {
         inference_time_ms: 3.1
       };
 
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback(null, versicolorResponse);
       });
 
@@ -283,7 +283,7 @@ describe('GrpcService', () => {
 
   describe('getGrpcStatus', () => {
     it('should return correct status when server is available', async () => {
-      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: Function) => {
+      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: (error?: Error) => void) => {
         callback(null);
       });
 
@@ -299,7 +299,7 @@ describe('GrpcService', () => {
     });
 
     it('should return correct status when server is unavailable', async () => {
-      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: Function) => {
+      mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: (error?: Error) => void) => {
         callback(new Error('Connection refused'));
       });
 
@@ -355,7 +355,7 @@ describe('GrpcService', () => {
     };
 
     it('should handle multiple concurrent requests', async () => {
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         // Simulate some processing time
         setTimeout(() => callback(null, mockGrpcResponse), 10);
       });
@@ -373,7 +373,7 @@ describe('GrpcService', () => {
     });
 
     it('should handle network errors gracefully', async () => {
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback({ code: grpc.status.UNAVAILABLE, message: 'Network error' }, null);
       });
 
@@ -384,7 +384,7 @@ describe('GrpcService', () => {
     it('should maintain correct request format', async () => {
       let capturedRequest: any;
       
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         capturedRequest = request;
         callback(null, mockGrpcResponse);
       });
@@ -430,7 +430,7 @@ describe('GrpcService', () => {
         // Missing probabilities, confidence, inference_time_ms
       };
 
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback(null, incompleteResponse);
       });
 
@@ -450,7 +450,7 @@ describe('GrpcService', () => {
         petal_width: 20
       };
 
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         callback(null, mockGrpcResponse);
       });
 
@@ -476,7 +476,7 @@ describe('GrpcService', () => {
         petal_width: 0.2
       };
 
-      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: Function) => {
+      mockGrpcClient.classify.mockImplementation((request: any, options: any, callback: (error: any, response?: any) => void) => {
         // Simulate slow response but within deadline
         setTimeout(() => callback(null, mockGrpcResponse), 100); // Reduced time for testing
       });

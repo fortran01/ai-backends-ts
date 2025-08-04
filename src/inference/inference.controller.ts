@@ -456,7 +456,7 @@ export class InferenceController {
     description: 'One or both services unavailable (ONNX model or gRPC server)' 
   })
   @UsePipes(new ZodValidationPipe(PerformanceComparisonRequestSchema))
-  public async performanceComparison(@Body() request: PerformanceComparisonRequestDto): Promise<any> {
+  public async performanceComparison(@Body() request: PerformanceComparisonRequestDto): Promise<PerformanceComparisonResponseDto> {
     return this.inferenceService.performanceComparison(request, request.iterations);
   }
 

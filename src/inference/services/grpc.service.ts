@@ -4,6 +4,36 @@ import * as protoLoader from '@grpc/proto-loader';
 import * as path from 'path';
 import { ClassifyRequestDto, ClassifyResponseDto } from '../dto/classify.dto';
 
+// Define types for gRPC client and responses
+interface GrpcClassifyRequest {
+  sepal_length: number;
+  sepal_width: number;
+  petal_length: number;
+  petal_width: number;
+}
+
+interface GrpcClassifyResponse {
+  class_name: string;
+  predicted_class: number;
+  probabilities: number[];
+  confidence: number;
+  inference_time_ms?: number;
+}
+
+interface GrpcClient {
+  classify: (
+    request: GrpcClassifyRequest,
+    options: { deadline: Date },
+    callback: (error: grpc.ServiceError | null, response?: GrpcClassifyResponse) => void
+  ) => void;
+  waitForReady: (deadline: Date, callback: (error?: Error) => void) => void;
+  close: () => void;
+}
+
+interface InferencePackage {
+  InferenceService: new (address: string, credentials: grpc.ChannelCredentials) => GrpcClient;
+}
+
 /**
  * gRPC client service for high-performance inference
  * 
@@ -13,7 +43,7 @@ import { ClassifyRequestDto, ClassifyResponseDto } from '../dto/classify.dto';
 @Injectable()
 export class GrpcService implements OnModuleDestroy {
   private readonly logger: Logger = new Logger(GrpcService.name);
-  private grpcClient: any = null;
+  private grpcClient: GrpcClient | null = null;
   private readonly grpcEndpoint: string = 'localhost:50051';
 
   constructor() {
@@ -35,7 +65,7 @@ export class GrpcService implements OnModuleDestroy {
         oneofs: true,
       });
 
-      const inferenceProto = grpc.loadPackageDefinition(packageDefinition).inference as any;
+      const inferenceProto = grpc.loadPackageDefinition(packageDefinition).inference as InferencePackage;
 
       // Create gRPC client
       this.grpcClient = new inferenceProto.InferenceService(
@@ -111,7 +141,7 @@ export class GrpcService implements OnModuleDestroy {
       deadline.setSeconds(deadline.getSeconds() + 10);
 
       // Make gRPC call
-      this.grpcClient.classify(grpcRequest, { deadline }, (error: any, response: any) => {
+      this.grpcClient.classify(grpcRequest, { deadline }, (error: grpc.ServiceError | null, response?: GrpcClassifyResponse) => {
         const totalTime: number = Date.now() - startTime;
 
         if (error) {

@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { Logger } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { HttpInferenceService } from './http.service';
-import { ClassifyRequestDto, ClassifyResponseDto } from '../dto/classify.dto';
+import { ClassifyRequestDto } from '../dto/classify.dto';
 import { AxiosResponse, AxiosError } from 'axios';
 
 /**
@@ -15,7 +15,6 @@ import { AxiosResponse, AxiosError } from 'axios';
 describe('HttpInferenceService', () => {
   let service: HttpInferenceService;
   let httpService: HttpService;
-  let loggerSpy: jest.SpyInstance;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -35,7 +34,7 @@ describe('HttpInferenceService', () => {
     httpService = module.get<HttpService>(HttpService);
     
     // Mock logger to avoid console output during tests
-    loggerSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    jest.spyOn(Logger.prototype, 'log').mockImplementation();
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
     jest.spyOn(Logger.prototype, 'debug').mockImplementation();
   });
