@@ -36,6 +36,7 @@ import {
   PerformanceComparisonRequestSchema,
   PerformanceComparisonRequestDto,
   PerformanceComparisonRequestDtoClass,
+  PerformanceComparisonResponseDto,
   SerializationChallengeResponseDtoClass
 } from './dto/performance.dto';
 

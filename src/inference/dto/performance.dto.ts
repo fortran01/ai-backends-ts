@@ -116,6 +116,37 @@ export const SerializationChallengeResponseSchema = z.object({
 
 export type SerializationChallengeResponseDto = z.infer<typeof SerializationChallengeResponseSchema>;
 
+// Performance comparison response schema
+export const PerformanceComparisonResponseSchema = z.object({
+  iterations: z.number(),
+  rest_performance: z.object({
+    total_time_ms: z.number(),
+    average_time_ms: z.number(),
+    fastest_ms: z.number(),
+    slowest_ms: z.number(),
+    success_rate: z.number()
+  }),
+  grpc_performance: z.object({
+    total_time_ms: z.number(),
+    average_time_ms: z.number(),
+    fastest_ms: z.number(),
+    slowest_ms: z.number(),
+    success_rate: z.number()
+  }),
+  performance_analysis: z.object({
+    speedup_factor: z.number(),
+    grpc_faster: z.boolean(),
+    time_saved_ms: z.number(),
+    throughput_improvement: z.number()
+  }),
+  sample_results: z.object({
+    rest_result: z.unknown().nullable(),
+    grpc_result: z.unknown().nullable()
+  })
+});
+
+export type PerformanceComparisonResponseDto = z.infer<typeof PerformanceComparisonResponseSchema>;
+
 /**
  * Response DTO for serialization challenge endpoint
  */

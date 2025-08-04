@@ -284,7 +284,7 @@ describe('GrpcService', () => {
   describe('getGrpcStatus', () => {
     it('should return correct status when server is available', async () => {
       mockGrpcClient.waitForReady.mockImplementation((deadline: Date, callback: (error?: Error) => void) => {
-        callback(null);
+        callback(undefined);
       });
 
       const status = await service.getGrpcStatus();

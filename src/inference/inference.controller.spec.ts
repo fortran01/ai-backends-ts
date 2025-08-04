@@ -888,38 +888,41 @@ describe('InferenceController', () => {
         };
 
         const expectedResponse = {
-          summary: {
-            iterations: 10,
-            http_avg_time_ms: 12.5,
-            grpc_avg_time_ms: 5.2,
-            speedup_factor: 2.4,
-            grpc_advantage_percent: 58.4
-          },
-          http_results: {
-            protocol: 'HTTP/REST',
-            successful_requests: 10,
-            failed_requests: 0,
+          iterations: 10,
+          rest_performance: {
             total_time_ms: 125.0,
-            avg_time_ms: 12.5,
-            min_time_ms: 10.1,
-            max_time_ms: 15.8
+            average_time_ms: 12.5,
+            fastest_ms: 10.1,
+            slowest_ms: 15.8,
+            success_rate: 1.0
           },
-          grpc_results: {
-            protocol: 'gRPC',
-            successful_requests: 10,
-            failed_requests: 0,
+          grpc_performance: {
             total_time_ms: 52.0,
-            avg_time_ms: 5.2,
-            min_time_ms: 4.1,
-            max_time_ms: 6.8
+            average_time_ms: 5.2,
+            fastest_ms: 4.1,
+            slowest_ms: 6.8,
+            success_rate: 1.0
           },
-          classification_result: {
-            predicted_class: 'setosa',
-            predicted_class_index: 0,
-            probabilities: [0.95, 0.03, 0.02],
-            confidence: 0.95
+          performance_analysis: {
+            speedup_factor: 2.4,
+            grpc_faster: true,
+            time_saved_ms: 73.0,
+            throughput_improvement: 140.4
           },
-          input_features: request
+          sample_results: {
+            rest_result: {
+              predicted_class: 'setosa',
+              predicted_class_index: 0,
+              probabilities: [0.95, 0.03, 0.02],
+              confidence: 0.95
+            },
+            grpc_result: {
+              predicted_class: 'setosa',
+              predicted_class_index: 0,
+              probabilities: [0.95, 0.03, 0.02],
+              confidence: 0.95
+            }
+          }
         };
 
         inferenceService.performanceComparison.mockResolvedValue(expectedResponse);
@@ -927,8 +930,8 @@ describe('InferenceController', () => {
         const result = await controller.performanceComparison(request);
 
         expect(result).toEqual(expectedResponse);
-        expect(result.summary.grpc_avg_time_ms).toBeLessThan(result.summary.http_avg_time_ms);
-        expect(result.summary.speedup_factor).toBeGreaterThan(1.0);
+        expect(result.grpc_performance.average_time_ms).toBeLessThan(result.rest_performance.average_time_ms);
+        expect(result.performance_analysis.speedup_factor).toBeGreaterThan(1.0);
         expect(inferenceService.performanceComparison).toHaveBeenCalledWith(request);
       });
 
@@ -942,38 +945,41 @@ describe('InferenceController', () => {
         };
 
         const expectedResponse = {
-          summary: {
-            iterations: 5,
-            http_avg_time_ms: 15.0,
-            grpc_avg_time_ms: 6.0,
-            speedup_factor: 2.5,
-            grpc_advantage_percent: 60.0
-          },
-          http_results: {
-            protocol: 'HTTP/REST',
-            successful_requests: 5,
-            failed_requests: 0,
+          iterations: 5,
+          rest_performance: {
             total_time_ms: 75.0,
-            avg_time_ms: 15.0,
-            min_time_ms: 12.0,
-            max_time_ms: 18.0
+            average_time_ms: 15.0,
+            fastest_ms: 12.0,
+            slowest_ms: 18.0,
+            success_rate: 1.0
           },
-          grpc_results: {
-            protocol: 'gRPC',
-            successful_requests: 5,
-            failed_requests: 0,
+          grpc_performance: {
             total_time_ms: 30.0,
-            avg_time_ms: 6.0,
-            min_time_ms: 5.0,
-            max_time_ms: 7.5
+            average_time_ms: 6.0,
+            fastest_ms: 5.0,
+            slowest_ms: 7.5,
+            success_rate: 1.0
           },
-          classification_result: {
-            predicted_class: 'versicolor',
-            predicted_class_index: 1,
-            probabilities: [0.02, 0.92, 0.06],
-            confidence: 0.92
+          performance_analysis: {
+            speedup_factor: 2.5,
+            grpc_faster: true,
+            time_saved_ms: 45.0,
+            throughput_improvement: 150.0
           },
-          input_features: request
+          sample_results: {
+            rest_result: {
+              predicted_class: 'versicolor',
+              predicted_class_index: 1,
+              probabilities: [0.02, 0.92, 0.06],
+              confidence: 0.92
+            },
+            grpc_result: {
+              predicted_class: 'versicolor',
+              predicted_class_index: 1,
+              probabilities: [0.02, 0.92, 0.06],
+              confidence: 0.92
+            }
+          }
         };
 
         inferenceService.performanceComparison.mockResolvedValue(expectedResponse);
@@ -981,9 +987,9 @@ describe('InferenceController', () => {
         const result = await controller.performanceComparison(request);
 
         expect(result).toEqual(expectedResponse);
-        expect(result.summary.iterations).toBe(5);
-        expect(result.http_results.successful_requests).toBe(5);
-        expect(result.grpc_results.successful_requests).toBe(5);
+        expect(result.iterations).toBe(5);
+        expect(result.rest_performance.success_rate).toBe(1.0);
+        expect(result.grpc_performance.success_rate).toBe(1.0);
       });
 
       it('should handle mixed success/failure scenarios', async () => {
@@ -996,38 +1002,41 @@ describe('InferenceController', () => {
         };
 
         const expectedResponse = {
-          summary: {
-            iterations: 8,
-            http_avg_time_ms: 14.2,
-            grpc_avg_time_ms: 5.8,
-            speedup_factor: 2.45,
-            grpc_advantage_percent: 59.2
-          },
-          http_results: {
-            protocol: 'HTTP/REST',
-            successful_requests: 7,
-            failed_requests: 1,
+          iterations: 8,
+          rest_performance: {
             total_time_ms: 99.4,
-            avg_time_ms: 14.2,
-            min_time_ms: 11.5,
-            max_time_ms: 18.0
+            average_time_ms: 14.2,
+            fastest_ms: 11.5,
+            slowest_ms: 18.0,
+            success_rate: 0.875
           },
-          grpc_results: {
-            protocol: 'gRPC',
-            successful_requests: 8,
-            failed_requests: 0,
+          grpc_performance: {
             total_time_ms: 46.4,
-            avg_time_ms: 5.8,
-            min_time_ms: 4.9,
-            max_time_ms: 7.2
+            average_time_ms: 5.8,
+            fastest_ms: 4.9,
+            slowest_ms: 7.2,
+            success_rate: 1.0
           },
-          classification_result: {
-            predicted_class: 'virginica',
-            predicted_class_index: 2,
-            probabilities: [0.01, 0.05, 0.94],
-            confidence: 0.94
+          performance_analysis: {
+            speedup_factor: 2.45,
+            grpc_faster: true,
+            time_saved_ms: 53.0,
+            throughput_improvement: 145.0
           },
-          input_features: request
+          sample_results: {
+            rest_result: {
+              predicted_class: 'virginica',
+              predicted_class_index: 2,
+              probabilities: [0.01, 0.05, 0.94],
+              confidence: 0.94
+            },
+            grpc_result: {
+              predicted_class: 'virginica',
+              predicted_class_index: 2,
+              probabilities: [0.01, 0.05, 0.94],
+              confidence: 0.94
+            }
+          }
         };
 
         inferenceService.performanceComparison.mockResolvedValue(expectedResponse);
@@ -1035,8 +1044,8 @@ describe('InferenceController', () => {
         const result = await controller.performanceComparison(request);
 
         expect(result).toEqual(expectedResponse);
-        expect(result.http_results.failed_requests).toBe(1);
-        expect(result.grpc_results.failed_requests).toBe(0);
+        expect(result.rest_performance.success_rate).toBe(0.875);
+        expect(result.grpc_performance.success_rate).toBe(1.0);
       });
 
       it('should handle service unavailability during performance comparison', async () => {
@@ -1283,49 +1292,52 @@ describe('InferenceController', () => {
       };
 
       const performanceResponse = {
-        summary: {
-          iterations: 20,
-          http_avg_time_ms: 18.5,
-          grpc_avg_time_ms: 7.2,
-          speedup_factor: 2.57,
-          grpc_advantage_percent: 61.1
-        },
-        http_results: {
-          protocol: 'HTTP/REST',
-          successful_requests: 20,
-          failed_requests: 0,
+        iterations: 20,
+        rest_performance: {
           total_time_ms: 370.0,
-          avg_time_ms: 18.5,
-          min_time_ms: 15.1,
-          max_time_ms: 23.8
+          average_time_ms: 18.5,
+          fastest_ms: 15.1,
+          slowest_ms: 23.8,
+          success_rate: 1.0
         },
-        grpc_results: {
-          protocol: 'gRPC',
-          successful_requests: 20,
-          failed_requests: 0,
+        grpc_performance: {
           total_time_ms: 144.0,
-          avg_time_ms: 7.2,
-          min_time_ms: 5.8,
-          max_time_ms: 9.1
+          average_time_ms: 7.2,
+          fastest_ms: 5.8,
+          slowest_ms: 9.1,
+          success_rate: 1.0
         },
-        classification_result: {
-          predicted_class: 'setosa',
-          predicted_class_index: 0,
-          probabilities: [0.95, 0.03, 0.02],
-          confidence: 0.95
+        performance_analysis: {
+          speedup_factor: 2.57,
+          grpc_faster: true,
+          time_saved_ms: 226.0,
+          throughput_improvement: 157.0
         },
-        input_features: performanceRequest
+        sample_results: {
+          rest_result: {
+            predicted_class: 'setosa',
+            predicted_class_index: 0,
+            probabilities: [0.95, 0.03, 0.02],
+            confidence: 0.95
+          },
+          grpc_result: {
+            predicted_class: 'setosa',
+            predicted_class_index: 0,
+            probabilities: [0.95, 0.03, 0.02],
+            confidence: 0.95
+          }
+        }
       };
 
       inferenceService.performanceComparison.mockResolvedValue(performanceResponse);
 
       const result = await controller.performanceComparison(performanceRequest);
 
-      expect(result.summary.speedup_factor).toBeGreaterThan(2.0); // gRPC should be significantly faster
-      expect(result.summary.grpc_advantage_percent).toBeGreaterThan(50.0);
-      expect(result.grpc_results.avg_time_ms).toBeLessThan(result.http_results.avg_time_ms);
-      expect(result.http_results.successful_requests).toBe(20);
-      expect(result.grpc_results.successful_requests).toBe(20);
+      expect(result.performance_analysis.speedup_factor).toBeGreaterThan(2.0); // gRPC should be significantly faster
+      expect(result.performance_analysis.throughput_improvement).toBeGreaterThan(50.0);
+      expect(result.grpc_performance.average_time_ms).toBeLessThan(result.rest_performance.average_time_ms);
+      expect(result.rest_performance.success_rate).toBe(1.0);
+      expect(result.grpc_performance.success_rate).toBe(1.0);
     });
 
     it('should handle conversation memory across multiple chat turns', async () => {
