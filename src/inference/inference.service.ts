@@ -390,11 +390,11 @@ export class InferenceService {
       return value;
     };
 
-    // Calculate original size (approximate)
+    // Calculate original size (approximate) using custom replacer
     const originalSizeApprox: number = JSON.stringify({
       ...baseResult,
       complex_demo: complexObject
-    }).length;
+    }, customReplacer).length;
 
     // Serialize with custom replacer
     const serializedData: string = JSON.stringify({
