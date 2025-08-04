@@ -254,7 +254,7 @@ export class SemanticCacheService implements OnModuleDestroy {
    * 
    * Following the coding guidelines: Comprehensive error handling
    */
-  async findSimilarResponse(prompt: string): Promise<CachedResponse | null> {
+  public async findSimilarResponse(prompt: string): Promise<CachedResponse | null> {
     if (!prompt || prompt.trim().length === 0) {
       return null;
     }
@@ -299,7 +299,7 @@ export class SemanticCacheService implements OnModuleDestroy {
    * 
    * Following the coding guidelines: Proper async handling
    */
-  async cacheResponse(prompt: string, response: string): Promise<void> {
+  public async cacheResponse(prompt: string, response: string): Promise<void> {
     if (!prompt || !response || prompt.trim().length === 0 || response.trim().length === 0) {
       return;
     }
@@ -342,7 +342,7 @@ export class SemanticCacheService implements OnModuleDestroy {
    * 
    * Following the coding guidelines: Detailed documentation
    */
-  getCacheStats(hit: boolean, similarity: number, responseTime: number): SemanticCacheStats {
+  public getCacheStats(hit: boolean, similarity: number, responseTime: number): SemanticCacheStats {
     return {
       hit,
       similarity,
@@ -358,7 +358,7 @@ export class SemanticCacheService implements OnModuleDestroy {
    * 
    * Following the coding guidelines: Clear method documentation
    */
-  clearCache(): void {
+  public clearCache(): void {
     this.cache.clear();
   }
 
@@ -367,7 +367,7 @@ export class SemanticCacheService implements OnModuleDestroy {
    * 
    * @returns number - Number of cached entries
    */
-  getCacheSize(): number {
+  public getCacheSize(): number {
     return this.cache.size;
   }
 
@@ -376,7 +376,7 @@ export class SemanticCacheService implements OnModuleDestroy {
    * 
    * @returns object - Model status and configuration
    */
-  getModelInfo(): { available: boolean; model: string; cacheSize: number; threshold: number } {
+  public getModelInfo(): { available: boolean; model: string; cacheSize: number; threshold: number } {
     return {
       available: this.transformerAvailable,
       model: this.modelName,
@@ -390,7 +390,7 @@ export class SemanticCacheService implements OnModuleDestroy {
    * 
    * Following the coding guidelines: Proper resource cleanup
    */
-  onModuleDestroy(): void {
+  public onModuleDestroy(): void {
     this.logger.log('SemanticCacheService shutting down');
     // No active resources to clean up with child process approach
   }

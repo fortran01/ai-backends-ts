@@ -465,7 +465,7 @@ export class InferenceService {
     if (cachedResponse) {
       // Cache hit - return cached response with statistics
       const responseTime: number = Date.now() - startTime;
-      const cacheStats = this.semanticCacheService.getCacheStats(true, cachedResponse.similarity || 0, responseTime);
+      const cacheStats = this.semanticCacheService.getCacheStats(true, cachedResponse.similarity ?? 0, responseTime);
       
       // Still update conversation memory for session tracking
       this.memoryService.saveConversation(
