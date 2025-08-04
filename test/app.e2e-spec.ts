@@ -1065,33 +1065,6 @@ describe('AI Backends API (e2e)', () => {
   describe('Phase 2: Performance Comparison API', () => {
     describe('/api/v1/classify-benchmark (POST)', () => {
       it('should compare HTTP vs gRPC performance successfully', () => {
-        const mockPerformanceResult = {
-          summary: {
-            iterations: 10,
-            gRPC_winner: true,
-            speedup_factor: 1.5
-          },
-          http_results: {
-            total_time_ms: 45.2,
-            average_time_ms: 4.52,
-            fastest_ms: 3.1,
-            slowest_ms: 6.8,
-            success_rate: 100
-          },
-          grpc_results: {
-            total_time_ms: 28.7,
-            average_time_ms: 2.87,
-            fastest_ms: 2.1,
-            slowest_ms: 4.2,
-            success_rate: 100
-          },
-          classification_result: {
-            predicted_class: 'setosa',
-            predicted_class_index: 0,
-            confidence: 0.95
-          }
-        };
-
         // Mock HTTP and gRPC service responses
         httpInferenceService.classifyIrisViaHttp.mockResolvedValue({
           predicted_class: 'setosa',
@@ -1194,42 +1167,6 @@ describe('AI Backends API (e2e)', () => {
   describe('Phase 2: Serialization Challenge API', () => {
     describe('/api/v1/classify-detailed (POST)', () => {
       it('should handle serialization challenge successfully', () => {
-        const mockSerializationResponse = {
-          predicted_class: 'setosa',
-          predicted_class_index: 0,
-          class_name: 'setosa',
-          probabilities: [0.95, 0.03, 0.02],
-          confidence: 0.95,
-          class_names: ['setosa', 'versicolor', 'virginica'],
-          input_features: {
-            sepal_length: 5.1,
-            sepal_width: 3.5,
-            petal_length: 1.4,
-            petal_width: 0.2
-          },
-          model_info: {
-            format: 'ONNX',
-            version: '1.0',
-            inference_time_ms: 5
-          },
-          serialization_demo: {
-            big_int_demo: '9007199254740991',
-            undefined_handling: null,
-            complex_nested_structure: {
-              deeply: {
-                nested: {
-                  data: 'value'
-                }
-              }
-            }
-          },
-          serialization_info: {
-            original_size_bytes: 512,
-            serialized_size_bytes: 256,
-            compression_ratio: 2.0
-          }
-        };
-
         onnxService.classifyIris.mockResolvedValue({
           predicted_class: 'setosa',
           predicted_class_index: 0,
