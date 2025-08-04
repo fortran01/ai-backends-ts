@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { OllamaService } from '../src/inference/services/ollama.service';
@@ -78,6 +78,15 @@ describe('AI Backends API (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Set global API prefix (same as main.ts)
+    app.setGlobalPrefix('api');
+    
+    // Enable API versioning with URI-based versioning (same as main.ts)
+    app.enableVersioning({
+      type: VersioningType.URI,
+      defaultVersion: '1',
+    });
     
     // Apply validation pipe as in main.ts
     app.useGlobalPipes(new ValidationPipe({
