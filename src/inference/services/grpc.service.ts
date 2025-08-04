@@ -156,15 +156,15 @@ export class GrpcService implements OnModuleDestroy {
 
         // Transform gRPC response to DTO format
         const result: ClassifyResponseDto = {
-          predicted_class: response?.class_name || '',
-          predicted_class_index: response?.predicted_class || 0,
+          predicted_class: response?.class_name ?? '',
+          predicted_class_index: response?.predicted_class ?? 0,
           class_names: ['setosa', 'versicolor', 'virginica'],
-          probabilities: response?.probabilities || [],
-          confidence: response?.confidence || 0,
+          probabilities: response?.probabilities ?? [],
+          confidence: response?.confidence ?? 0,
           model_info: {
             format: 'gRPC',
             version: '1.0',
-            inference_time_ms: response?.inference_time_ms || 0
+            inference_time_ms: response?.inference_time_ms ?? 0
           },
           input_features: {
             sepal_length: request.sepal_length,
