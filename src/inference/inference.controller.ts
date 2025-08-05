@@ -472,6 +472,69 @@ export class InferenceController {
   }
 
   /**
+   * Classify Iris species using Triton Inference Server
+   * 
+   * @param request - Classification request with iris flower measurements
+   * @returns Classification response with model prediction via Triton
+   */
+  @Post('classify-triton')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Classify Iris species via Triton Inference Server',
+    description: 'Demonstrates production-grade model serving with Triton Inference Server. Features dynamic batching, model versioning, and optimized inference performance. Requires Triton server running on port 8000.'
+  })
+  @ApiBody({ 
+    type: ClassifyRequestDtoClass,
+    description: 'Iris flower measurements for Triton-based species prediction with dynamic batching',
+    examples: {
+      setosa: {
+        summary: 'Typical Setosa measurements',
+        value: {
+          sepal_length: 5.1,
+          sepal_width: 3.5,
+          petal_length: 1.4,
+          petal_width: 0.2
+        }
+      },
+      versicolor: {
+        summary: 'Typical Versicolor measurements',
+        value: {
+          sepal_length: 7.0,
+          sepal_width: 3.2,
+          petal_length: 4.7,
+          petal_width: 1.4
+        }
+      },
+      virginica: {
+        summary: 'Typical Virginica measurements',
+        value: {
+          sepal_length: 6.3,
+          sepal_width: 3.3,
+          petal_length: 6.0,
+          petal_width: 2.5
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Triton Inference Server classification completed successfully',
+    type: ClassifyResponseDtoClass
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid measurements or Triton request format error' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'Triton Inference Server unavailable. Please start Triton server with: docker run --rm -p8000:8000 -p8001:8001 -p8002:8002 -v $(pwd)/triton_model_repository:/models nvcr.io/nvidia/tritonserver:latest tritonserver --model-repository=/models' 
+  })
+  @UsePipes(new ZodValidationPipe(ClassifyRequestSchema))
+  public async classifyIrisViaTriton(@Body() request: ClassifyRequestDto): Promise<ClassifyResponseDtoClass> {
+    return this.inferenceService.classifyIrisViaTriton(request);
+  }
+
+  /**
    * Performance comparison between REST and gRPC protocols
    * 
    * @param request - Classification request with performance testing parameters
@@ -559,6 +622,114 @@ export class InferenceController {
   @UsePipes(new ZodValidationPipe(PerformanceComparisonRequestSchema))
   public async performanceComparison(@Body() request: PerformanceComparisonRequestDto): Promise<PerformanceComparisonResponseDto> {
     return this.inferenceService.performanceComparison(request, request.iterations);
+  }
+
+  /**
+   * Comprehensive performance comparison including Triton Inference Server
+   * 
+   * @param request - Performance comparison request with iterations and iris measurements
+   * @returns Detailed analysis comparing Direct ONNX vs gRPC vs Triton performance
+   */
+  @Post('classify-comprehensive-benchmark')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Comprehensive performance comparison: Direct ONNX vs gRPC vs Triton',
+    description: 'Demonstrates production-grade model serving performance across three different approaches: Direct ONNX inference, gRPC server communication, and Triton Inference Server with dynamic batching. Provides detailed metrics and speedup analysis.'
+  })
+  @ApiBody({ 
+    type: PerformanceComparisonRequestDtoClass,
+    description: 'Performance testing parameters with iris flower measurements',
+    examples: {
+      standard_test: {
+        summary: 'Standard performance test',
+        value: {
+          sepal_length: 5.1,
+          sepal_width: 3.5,
+          petal_length: 1.4,
+          petal_width: 0.2,
+          iterations: 20
+        }
+      },
+      intensive_test: {
+        summary: 'Intensive performance test',
+        value: {
+          sepal_length: 6.3,
+          sepal_width: 3.3,
+          petal_length: 6.0,
+          petal_width: 2.5,
+          iterations: 50
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Comprehensive performance analysis completed successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        iterations: { type: 'number', example: 20 },
+        direct_onnx_performance: {
+          type: 'object',
+          properties: {
+            total_time_ms: { type: 'number', example: 125.4 },
+            average_time_ms: { type: 'number', example: 6.27 },
+            fastest_ms: { type: 'number', example: 4.2 },
+            slowest_ms: { type: 'number', example: 8.9 },
+            success_rate: { type: 'number', example: 100 },
+            requests_per_second: { type: 'number', example: 159.5 }
+          }
+        },
+        grpc_performance: {
+          type: 'object',
+          properties: {
+            total_time_ms: { type: 'number', example: 89.3 },
+            average_time_ms: { type: 'number', example: 4.47 },
+            fastest_ms: { type: 'number', example: 3.1 },
+            slowest_ms: { type: 'number', example: 6.2 },
+            success_rate: { type: 'number', example: 100 },
+            requests_per_second: { type: 'number', example: 223.7 }
+          }
+        },
+        triton_performance: {
+          type: 'object',
+          properties: {
+            total_time_ms: { type: 'number', example: 67.8 },
+            average_time_ms: { type: 'number', example: 3.39 },
+            fastest_ms: { type: 'number', example: 2.4 },
+            slowest_ms: { type: 'number', example: 4.8 },
+            success_rate: { type: 'number', example: 100 },
+            requests_per_second: { type: 'number', example: 294.9 }
+          }
+        },
+        performance_analysis: {
+          type: 'object',
+          properties: {
+            fastest_method: { type: 'string', example: 'Triton' },
+            triton_vs_onnx_speedup: { type: 'number', example: 1.85 },
+            triton_vs_grpc_speedup: { type: 'number', example: 1.32 },
+            grpc_vs_onnx_speedup: { type: 'number', example: 1.40 },
+            throughput_ranking: { 
+              type: 'array', 
+              items: { type: 'string' },
+              example: ['Triton', 'gRPC', 'Direct ONNX']
+            }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid request parameters or iteration count out of range (1-50)' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'One or more inference services unavailable (Triton, gRPC server, or direct ONNX)' 
+  })
+  @UsePipes(new ZodValidationPipe(PerformanceComparisonRequestSchema))
+  public async comprehensivePerformanceComparison(@Body() request: PerformanceComparisonRequestDto): Promise<any> {
+    return this.inferenceService.comprehensivePerformanceComparison(request, request.iterations);
   }
 
   /**

@@ -12,6 +12,7 @@ import { HttpInferenceService } from './services/http.service';
 import { SemanticCacheService } from './services/semantic-cache.service';
 import { DriftMonitoringService } from './services/drift-monitoring.service';
 import { MlflowService } from './services/mlflow.service';
+import { TritonService } from './services/triton.service';
 
 /**
  * Inference module containing all model serving functionality
@@ -43,6 +44,7 @@ import { MlflowService } from './services/mlflow.service';
     SemanticCacheService,
     DriftMonitoringService,
     MlflowService,
+    TritonService,
   ],
   exports: [
     InferenceService, // Export for use in other modules if needed

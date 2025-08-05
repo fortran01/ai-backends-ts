@@ -19,6 +19,7 @@ HTTP_SERVER_URL="http://localhost:3001"
 GRPC_SERVER_URL="http://localhost:50051"
 MLFLOW_URL="http://localhost:5004"
 OLLAMA_URL="http://localhost:11434"
+TRITON_URL="http://localhost:8000"
 
 # Default options
 RUN_ALL=true
@@ -26,6 +27,7 @@ RUN_PHASE1=false
 RUN_PHASE2=false
 RUN_PHASE3=false
 RUN_PHASE4=false
+RUN_PHASE5=false
 VERBOSE=false
 SKIP_OPTIONAL=false
 
@@ -123,6 +125,7 @@ show_usage() {
     echo "  --phase2          Run Phase 2 tests only"
     echo "  --phase3          Run Phase 3 tests only"
     echo "  --phase4          Run Phase 4 tests only"
+    echo "  --phase5          Run Phase 5 tests only"
     echo "  --verbose, -v     Verbose output (show requests/responses)"
     echo "  --skip-optional   Skip optional tests if services unavailable"
     echo "  --help, -h        Show this help message"
@@ -130,6 +133,7 @@ show_usage() {
     echo "Examples:"
     echo "  $0                Run all tests"
     echo "  $0 --phase1 -v    Run Phase 1 tests with verbose output"
+    echo "  $0 --phase5       Run Phase 5 Triton tests only"
     echo "  $0 --skip-optional Run tests, skip optional services"
 }
 
@@ -154,6 +158,11 @@ while [[ $# -gt 0 ]]; do
         --phase4)
             RUN_ALL=false
             RUN_PHASE4=true
+            shift
+            ;;
+        --phase5)
+            RUN_ALL=false
+            RUN_PHASE5=true
             shift
             ;;
         --verbose|-v)
@@ -198,6 +207,8 @@ check_service "$MLFLOW_URL" "MLflow Server"
 MLFLOW_AVAILABLE=$?
 check_service "$OLLAMA_URL/api/tags" "Ollama Service"
 OLLAMA_AVAILABLE=$?
+check_service "$TRITON_URL/v2/health/live" "Triton Inference Server"
+TRITON_AVAILABLE=$?
 
 echo
 
@@ -338,6 +349,42 @@ if [ "$RUN_ALL" = true ] || [ "$RUN_PHASE4" = true ]; then
     echo
 fi
 
+# Phase 5 Tests
+if [ "$RUN_ALL" = true ] || [ "$RUN_PHASE5" = true ]; then
+    print_status "INFO" "=== PHASE 5 TESTS ==="
+    
+    # Triton health checks (optional)
+    if [[ "$TRITON_AVAILABLE" -eq 0 ]] || [[ "$SKIP_OPTIONAL" = false ]]; then
+        run_test "Triton Health Check" \
+            "curl -s $TRITON_URL/v2/health/live" \
+            true
+        
+        run_test "Triton Ready Check" \
+            "curl -s $TRITON_URL/v2/health/ready" \
+            true
+        
+        run_test "Triton Model Status" \
+            "curl -s $TRITON_URL/v2/models/iris_onnx" \
+            true
+    fi
+    
+    # Triton classification (optional)
+    if [[ "$TRITON_AVAILABLE" -eq 0 ]] || [[ "$SKIP_OPTIONAL" = false ]]; then
+        run_test "Triton Classification" \
+            "curl -s -X POST $NESTJS_URL/api/v1/classify-triton -H 'Content-Type: application/json' -d '{\"sepal_length\": 5.1, \"sepal_width\": 3.5, \"petal_length\": 1.4, \"petal_width\": 0.2}'" \
+            true
+    fi
+    
+    # Comprehensive performance comparison (optional - requires multiple services)
+    if ([[ "$TRITON_AVAILABLE" -eq 0 ]] && [[ "$GRPC_AVAILABLE" -eq 0 ]]) || [[ "$SKIP_OPTIONAL" = false ]]; then
+        run_test "Comprehensive Performance Benchmark (ONNX vs gRPC vs Triton)" \
+            "curl -s -X POST $NESTJS_URL/api/v1/classify-comprehensive-benchmark -H 'Content-Type: application/json' -d '{\"sepal_length\": 5.1, \"sepal_width\": 3.5, \"petal_length\": 1.4, \"petal_width\": 0.2, \"iterations\": 10}'" \
+            true
+    fi
+    
+    echo
+fi
+
 # Summary
 print_status "INFO" "=== TEST SUMMARY ==="
 echo "Total tests: $TOTAL_TESTS"
@@ -353,7 +400,8 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "• Security features functioning properly"
     echo "• Caching systems operational"
     echo "• Model lifecycle management active"
-    echo "• All supported phases tested successfully"
+    echo "• Production model serving infrastructure operational"
+    echo "• All supported phases (1-5) tested successfully"
     exit 0
 else
     print_status "ERROR" "$FAILED_TESTS test(s) failed"
@@ -372,6 +420,12 @@ else
     echo "📋 Phase 4 Dependencies:"
     echo "6. Python services for drift monitoring (ai-backends-py project)"
     echo "7. Model registration: python scripts/train_iris_model.py"
+    echo
+    echo "📋 Phase 5 Dependencies:"
+    echo "8. Triton Inference Server: docker run --rm -p8000:8000 -p8001:8001 -p8002:8002 \\"
+    echo "   -v \$(pwd)/triton_model_repository:/models \\"
+    echo "   nvcr.io/nvidia/tritonserver:latest \\"
+    echo "   tritonserver --model-repository=/models"
     echo
     echo "🔧 Common Solutions:"
     echo "• Use --skip-optional to skip tests for unavailable services"

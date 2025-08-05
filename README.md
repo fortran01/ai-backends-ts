@@ -1,6 +1,6 @@
-# AI Backends TypeScript/NestJS - Phase 1, 2, 3 & 4 Implementation
+# AI Backends TypeScript/NestJS - Phase 1-5 Complete Implementation
 
-This project demonstrates the complete Phase 1, 2, 3, and 4 implementation of AI backends using TypeScript and NestJS framework, showcasing advanced approaches to serving machine learning models with stateful conversation memory, high-performance gRPC communication, advanced caching strategies, API versioning, model lifecycle management, drift monitoring, and comprehensive security features.
+This project demonstrates the complete Phase 1-5 implementation of AI backends using TypeScript and NestJS framework, showcasing advanced approaches to serving machine learning models with stateful conversation memory, high-performance gRPC communication, advanced caching strategies, API versioning, model lifecycle management, drift monitoring, dedicated model serving infrastructure, and comprehensive security features.
 
 ## 🎯 Project Overview
 
@@ -1121,6 +1121,207 @@ curl -X POST http://localhost:3000/api/v1/classify-benchmark \
   -H "Content-Type: application/json" \
   -d '{"sepal_length": 5.1, "sepal_width": 3.5, "petal_length": 1.4, "petal_width": 0.2, "iterations": 20}'
 ```
+
+---
+
+## 🚀 Phase 5: Dedicated Model Serving Infrastructure
+
+Phase 5 demonstrates production-grade model serving using dedicated inference servers that provide optimizations beyond direct model loading in applications.
+
+### Phase 5 Features ✅
+- **Triton Inference Server Integration**: Production-grade model serving with dynamic batching
+- **HTTP-based Triton Client**: TypeScript client using REST API for model inference
+- **Dynamic Batching Performance Demo**: Comprehensive benchmarking showing Triton's optimization benefits
+- **Cross-Platform Model Repository**: Shared model artifacts between TypeScript and Python projects
+- **Performance Analysis Tools**: Statistical comparison across Direct ONNX, gRPC, and Triton approaches
+
+## 🔬 Phase 5: Triton Inference Server Examples
+
+### Triton Model Repository Setup
+
+The project includes a properly configured Triton model repository with ONNX models:
+
+```bash
+triton_model_repository/
+└── iris_onnx/
+    ├── 1/
+    │   └── model.onnx          # ONNX model artifact
+    └── config.pbtxt            # Triton model configuration
+```
+
+### Starting Triton Inference Server
+
+**Prerequisites**: Docker installed on your system
+
+```bash
+# Start Triton Inference Server with Docker
+docker run --rm -p8000:8000 -p8001:8001 -p8002:8002 \
+  -v "$(pwd)/triton_model_repository:/models" \
+  nvcr.io/nvidia/tritonserver:latest \
+  tritonserver --model-repository=/models
+
+# Verify Triton is running
+curl http://localhost:8000/v2/health/live
+curl http://localhost:8000/v2/health/ready
+
+# Check model status
+curl http://localhost:8000/v2/models/iris_onnx
+```
+
+### Triton Classification Example
+
+```bash
+# Classify iris species using Triton Inference Server
+curl -X POST http://localhost:3000/api/v1/classify-triton \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sepal_length": 5.1,
+    "sepal_width": 3.5,
+    "petal_length": 1.4,
+    "petal_width": 0.2
+  }'
+```
+
+**Expected Response**:
+```json
+{
+  "predicted_class": "setosa",
+  "predicted_class_index": 0,
+  "confidence": 0.97,
+  "probabilities": {
+    "setosa": 0.97,
+    "versicolor": 0.02,
+    "virginica": 0.01
+  },
+  "model_info": {
+    "name": "iris_onnx",
+    "version": "1",
+    "platform": "triton_inference_server"
+  },
+  "request_id": "triton_1704067200000",
+  "inference_time_ms": 15.42,
+  "features": {
+    "sepal_length": 5.1,
+    "sepal_width": 3.5,
+    "petal_length": 1.4,
+    "petal_width": 0.2
+  }
+}
+```
+
+### Dynamic Batching Performance Demo
+
+Triton's dynamic batching automatically groups concurrent requests for improved throughput:
+
+```bash
+# Run comprehensive performance comparison
+npm run test-dynamic-batching 30
+
+# Or run with custom parameters
+npm run test-dynamic-batching 50
+```
+
+**Sample Performance Results**:
+```
+📊 Performance Comparison Results
+========================================================================================================================
+| Method                           | Requests   | Success  | Avg Time (ms) | RPS       | Total Time (s) | Errors |
+|----------------------------------|------------|----------|---------------|-----------|----------------|--------|
+| Direct ONNX (Sequential)         | 30         | 30       | 8.45          | 118.34    | 0.25           | 0      |
+| Direct ONNX (Concurrent)         | 30         | 30       | 6.23          | 160.51    | 0.19           | 0      |
+| Triton (Sequential)              | 30         | 30       | 12.78         | 78.25     | 0.38           | 0      |
+| Triton (Concurrent - Dynamic Batching) | 30   | 30       | 4.12          | 242.72    | 0.12           | 0      |
+========================================================================================================================
+
+🚀 Dynamic Batching Benefits:
+   • Throughput Improvement: 1.51x faster (242.72 vs 160.51 RPS)
+   • Latency Reduction: 33.9% (4.12 vs 6.23 ms)
+   • Success Rate: 100.0% vs 100.0%
+```
+
+### Comprehensive Performance Comparison
+
+Compare all three serving approaches (Direct ONNX, gRPC, Triton):
+
+```bash
+# All services must be running:
+npm run start:dev     # NestJS API (port 3000)
+npm run grpc-server   # gRPC server (port 50051)
+# Docker Triton server (port 8000)
+
+# Run comprehensive benchmark
+curl -X POST http://localhost:3000/api/v1/classify-comprehensive-benchmark \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sepal_length": 5.1,
+    "sepal_width": 3.5,
+    "petal_length": 1.4,
+    "petal_width": 0.2,
+    "iterations": 25
+  }'
+```
+
+**Expected Comprehensive Analysis**:
+```json
+{
+  "iterations": 25,
+  "direct_onnx_performance": {
+    "total_time_ms": 156.7,
+    "average_time_ms": 6.27,
+    "fastest_ms": 4.2,
+    "slowest_ms": 9.1,
+    "success_rate": 100,
+    "requests_per_second": 159.5
+  },
+  "grpc_performance": {
+    "total_time_ms": 98.4,
+    "average_time_ms": 3.94,
+    "fastest_ms": 2.8,
+    "slowest_ms": 6.1,
+    "success_rate": 100,
+    "requests_per_second": 253.8
+  },
+  "triton_performance": {
+    "total_time_ms": 74.2,
+    "average_time_ms": 2.97,
+    "fastest_ms": 2.1,
+    "slowest_ms": 4.5,
+    "success_rate": 100,
+    "requests_per_second": 336.7
+  },
+  "performance_analysis": {
+    "fastest_method": "Triton",
+    "triton_vs_onnx_speedup": 2.11,
+    "triton_vs_grpc_speedup": 1.33,
+    "grpc_vs_onnx_speedup": 1.59,
+    "throughput_ranking": ["Triton", "gRPC", "Direct ONNX"]
+  }
+}
+```
+
+### Production Architecture Benefits
+
+**Direct Model Loading (Phases 1-4)**:
+- ✅ Simple integration and rapid prototyping
+- ✅ Good for development and testing
+- ❌ Model lifecycle tied to application lifecycle
+- ❌ Limited scalability and resource optimization
+
+**Triton Inference Server (Phase 5)**:
+- ✅ Framework-agnostic (ONNX, TensorFlow, PyTorch)
+- ✅ Advanced features: dynamic batching, concurrent model execution
+- ✅ Production-grade: model versioning, A/B testing, canary deployments
+- ✅ Hardware acceleration and memory optimization
+- ✅ Separation of serving infrastructure from application logic
+- ✅ Industry-standard solution used by major tech companies
+
+### Key Performance Optimizations
+
+1. **Dynamic Batching**: Automatically groups concurrent requests
+2. **Model Optimization**: Runtime optimizations for specific hardware
+3. **Memory Management**: Efficient model loading and unloading
+4. **Concurrent Execution**: Multiple model instances for high throughput
+5. **Hardware Acceleration**: GPU utilization when available
 
 ---
 

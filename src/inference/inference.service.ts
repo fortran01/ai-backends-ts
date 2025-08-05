@@ -8,6 +8,7 @@ import { HttpInferenceService } from './services/http.service';
 import { SemanticCacheService } from './services/semantic-cache.service';
 import { DriftMonitoringService } from './services/drift-monitoring.service';
 import { MlflowService } from './services/mlflow.service';
+import { TritonService } from './services/triton.service';
 import { 
   GenerateRequestDto, 
   GenerateResponseDto, 
@@ -38,7 +39,8 @@ export class InferenceService {
     private readonly httpInferenceService: HttpInferenceService,
     private readonly semanticCacheService: SemanticCacheService,
     private readonly driftMonitoringService: DriftMonitoringService,
-    private readonly mlflowService: MlflowService
+    private readonly mlflowService: MlflowService,
+    private readonly tritonService: TritonService
   ) {}
 
   /**
@@ -187,6 +189,16 @@ export class InferenceService {
   }
 
   /**
+   * Classify iris flower using Triton Inference Server
+   * 
+   * @param request - Classification request with Iris features
+   * @returns Classification results from Triton server with dynamic batching
+   */
+  public async classifyIrisViaTriton(request: ClassifyRequestDto): Promise<ClassifyResponseDto> {
+    return this.tritonService.classifyIris(request);
+  }
+
+  /**
    * Performance comparison between REST and gRPC protocols
    * 
    * @param request - Classification request with Iris features
@@ -313,6 +325,189 @@ export class InferenceService {
       sample_results: {
         rest_result: sampleRestResult,
         grpc_result: sampleGrpcResult
+      }
+    };
+  }
+
+  /**
+   * Comprehensive performance comparison including Triton Inference Server
+   * 
+   * @param request - Classification request with Iris features
+   * @param iterations - Number of iterations for performance testing (1-50)
+   * @returns Detailed performance analysis comparing Direct ONNX vs gRPC vs Triton
+   */
+  public async comprehensivePerformanceComparison(
+    request: ClassifyRequestDto, 
+    iterations: number = 10
+  ): Promise<{
+    iterations: number;
+    direct_onnx_performance: {
+      total_time_ms: number;
+      average_time_ms: number;
+      fastest_ms: number;
+      slowest_ms: number;
+      success_rate: number;
+      requests_per_second: number;
+    };
+    grpc_performance: {
+      total_time_ms: number;
+      average_time_ms: number;
+      fastest_ms: number;
+      slowest_ms: number;
+      success_rate: number;
+      requests_per_second: number;
+    };
+    triton_performance: {
+      total_time_ms: number;
+      average_time_ms: number;
+      fastest_ms: number;
+      slowest_ms: number;
+      success_rate: number;
+      requests_per_second: number;
+    };
+    performance_analysis: {
+      fastest_method: string;
+      triton_vs_onnx_speedup: number;
+      triton_vs_grpc_speedup: number;
+      grpc_vs_onnx_speedup: number;
+      throughput_ranking: string[];
+    };
+    sample_results: {
+      onnx_result: ClassifyResponseDto | null;
+      grpc_result: ClassifyResponseDto | null;
+      triton_result: ClassifyResponseDto | null;
+    };
+  }> {
+    // Validate iterations (limit for Triton comparison)
+    const validIterations: number = Math.max(1, Math.min(50, Math.floor(iterations)));
+
+    // Performance tracking arrays
+    const onnxTimes: number[] = [];
+    const grpcTimes: number[] = [];
+    const tritonTimes: number[] = [];
+    let onnxSuccesses: number = 0;
+    let grpcSuccesses: number = 0;
+    let tritonSuccesses: number = 0;
+    let sampleOnnxResult: ClassifyResponseDto | null = null;
+    let sampleGrpcResult: ClassifyResponseDto | null = null;
+    let sampleTritonResult: ClassifyResponseDto | null = null;
+
+    // Test Direct ONNX performance
+    for (let i = 0; i < validIterations; i++) {
+      try {
+        const startTime: number = Date.now();
+        const result: ClassifyResponseDto = await this.onnxService.classifyIris(request);
+        const endTime: number = Date.now();
+        
+        onnxTimes.push(endTime - startTime);
+        onnxSuccesses++;
+        
+        if (i === 0) sampleOnnxResult = result;
+      } catch (error: unknown) {
+        onnxTimes.push(0);
+      }
+    }
+
+    // Test gRPC performance
+    for (let i = 0; i < validIterations; i++) {
+      try {
+        const startTime: number = Date.now();
+        const result: ClassifyResponseDto = await this.grpcService.classifyIrisViaGrpc(request);
+        const endTime: number = Date.now();
+        
+        grpcTimes.push(endTime - startTime);
+        grpcSuccesses++;
+        
+        if (i === 0) sampleGrpcResult = result;
+      } catch (error: unknown) {
+        grpcTimes.push(0);
+      }
+    }
+
+    // Test Triton performance
+    for (let i = 0; i < validIterations; i++) {
+      try {
+        const startTime: number = Date.now();
+        const result: ClassifyResponseDto = await this.tritonService.classifyIris(request);
+        const endTime: number = Date.now();
+        
+        tritonTimes.push(endTime - startTime);
+        tritonSuccesses++;
+        
+        if (i === 0) sampleTritonResult = result;
+      } catch (error: unknown) {
+        tritonTimes.push(0);
+      }
+    }
+
+    // Calculate performance metrics for each method
+    const calculateMetrics = (times: number[], successes: number) => {
+      const validTimes: number[] = times.filter(time => time > 0);
+      const totalTime: number = validTimes.reduce((sum, time) => sum + time, 0);
+      const averageTime: number = validTimes.length > 0 ? totalTime / validTimes.length : 0;
+      const fastest: number = validTimes.length > 0 ? Math.min(...validTimes) : 0;
+      const slowest: number = validTimes.length > 0 ? Math.max(...validTimes) : 0;
+      const successRate: number = (successes / validIterations) * 100;
+      const requestsPerSecond: number = averageTime > 0 ? 1000 / averageTime : 0;
+
+      return {
+        total_time_ms: totalTime,
+        average_time_ms: averageTime,
+        fastest_ms: fastest,
+        slowest_ms: slowest,
+        success_rate: successRate,
+        requests_per_second: requestsPerSecond
+      };
+    };
+
+    const onnxMetrics = calculateMetrics(onnxTimes, onnxSuccesses);
+    const grpcMetrics = calculateMetrics(grpcTimes, grpcSuccesses);
+    const tritonMetrics = calculateMetrics(tritonTimes, tritonSuccesses);
+
+    // Performance analysis
+    const methods = [
+      { name: 'Direct ONNX', rps: onnxMetrics.requests_per_second, avg: onnxMetrics.average_time_ms },
+      { name: 'gRPC', rps: grpcMetrics.requests_per_second, avg: grpcMetrics.average_time_ms },
+      { name: 'Triton', rps: tritonMetrics.requests_per_second, avg: tritonMetrics.average_time_ms }
+    ];
+
+    // Sort by requests per second (descending)
+    const sortedMethods = methods
+      .filter(m => m.rps > 0)
+      .sort((a, b) => b.rps - a.rps);
+
+    const fastestMethod: string = sortedMethods.length > 0 ? sortedMethods[0].name : 'None';
+    const throughputRanking: string[] = sortedMethods.map(m => m.name);
+
+    // Calculate speedup factors
+    const tritonVsOnnxSpeedup: number = onnxMetrics.average_time_ms > 0 && tritonMetrics.average_time_ms > 0
+      ? onnxMetrics.average_time_ms / tritonMetrics.average_time_ms
+      : 1;
+
+    const tritonVsGrpcSpeedup: number = grpcMetrics.average_time_ms > 0 && tritonMetrics.average_time_ms > 0
+      ? grpcMetrics.average_time_ms / tritonMetrics.average_time_ms
+      : 1;
+
+    const grpcVsOnnxSpeedup: number = onnxMetrics.average_time_ms > 0 && grpcMetrics.average_time_ms > 0
+      ? onnxMetrics.average_time_ms / grpcMetrics.average_time_ms
+      : 1;
+
+    return {
+      iterations: validIterations,
+      direct_onnx_performance: onnxMetrics,
+      grpc_performance: grpcMetrics,
+      triton_performance: tritonMetrics,
+      performance_analysis: {
+        fastest_method: fastestMethod,
+        triton_vs_onnx_speedup: tritonVsOnnxSpeedup,
+        triton_vs_grpc_speedup: tritonVsGrpcSpeedup,
+        grpc_vs_onnx_speedup: grpcVsOnnxSpeedup,
+        throughput_ranking: throughputRanking
+      },
+      sample_results: {
+        onnx_result: sampleOnnxResult,
+        grpc_result: sampleGrpcResult,
+        triton_result: sampleTritonResult
       }
     };
   }
