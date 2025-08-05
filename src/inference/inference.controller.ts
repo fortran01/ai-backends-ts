@@ -732,6 +732,7 @@ export class InferenceController {
    * @returns Statistical drift analysis with recommendations
    */
   @Get('drift-report')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Generate model drift monitoring report',
@@ -761,6 +762,7 @@ export class InferenceController {
    * @returns Comparison of original vs biased predictions with drift impact analysis
    */
   @Post('classify-shifted')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Drift simulation with systematic bias injection',
@@ -815,6 +817,7 @@ export class InferenceController {
    * @returns Classification results with comprehensive registry metadata
    */
   @Post('classify-registry')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Classify using MLflow model registry',
@@ -881,6 +884,7 @@ export class InferenceController {
    * @returns List of registered models with metadata
    */
   @Get('models')
+  @Version('1')
   @ApiOperation({ 
     summary: 'List MLflow registered models',
     description: 'Returns all models registered in the MLflow Model Registry with their versions, stages, and metadata. Useful for model discovery and lifecycle management.'
@@ -932,6 +936,7 @@ export class InferenceController {
    * @returns Current monitoring status and sample counts
    */
   @Get('monitoring-stats')
+  @Version('1')
   @ApiOperation({ 
     summary: 'Get drift monitoring statistics',
     description: 'Returns current production monitoring status including sample counts for both production requests and reference data. Useful for monitoring system health and data availability.'

@@ -106,12 +106,14 @@ ai-backends-ts/
    # Install Python packages for drift analysis
    pip install pandas numpy scipy
    ```
-4. **MLflow Server** (optional for Phase 4 registry features):
+4. **MLflow Server** (required for Phase 4 registry features):
    ```bash
-   # Install and start MLflow tracking server
+   # Install and start MLflow tracking server with artifact serving
    pip install mlflow
-   mlflow server --host 0.0.0.0 --port 5000
+   mlflow server --host 0.0.0.0 --port 5004 --serve-artifacts
    ```
+   
+   **⚠️ IMPORTANT**: The `--serve-artifacts` flag is required for model downloads to work properly. Without this flag, registry-based classification will fail with download errors.
 
 ### Installation
 
@@ -406,12 +408,51 @@ The drift monitoring system now includes several advanced features:
 - Monitoring status: "HIGH_DRIFT" with retrain recommendation
 - Enhanced bias patterns successfully demonstrate detectable drift scenarios
 
-### MLflow Model Registry Demo
+### MLflow Model Registry Setup & Demo
+
+#### Prerequisites and Setup
+
+**Step 1: Start MLflow Server with Artifact Serving**
+```bash
+# ✅ Correct: Start MLflow server with artifact serving enabled
+mlflow server --host 0.0.0.0 --port 5004 --serve-artifacts
+
+# ❌ Incorrect: Without --serve-artifacts, model downloads will fail
+mlflow server --host 0.0.0.0 --port 5004
+```
+
+**Step 2: Train and Register Models (from ai-backends-py project)**
+```bash
+# Navigate to Python project and train models
+cd ../ai-backends-py
+
+# Option 1: Full training with MLflow registration (recommended for complete workflow)
+python scripts/train_iris_model.py
+
+# Option 2: Tensor-only ONNX model for maximum TypeScript compatibility
+python scripts/train_iris_model_improved.py
+
+# This will:
+# 1. Train RandomForestClassifier on Iris dataset
+# 2. Create tensor-only ONNX models for onnxruntime-node compatibility
+# 3. Register both sklearn and ONNX models in MLflow registry (train_iris_model.py)
+# 4. Set up model aliases for production deployment (train_iris_model.py)
+# 5. Test tensor compatibility and validate cross-platform compatibility
+```
+
+**Step 3: Verify Model Registration**
+```bash
+# Check MLflow UI at: http://localhost:5004
+# Navigate to "Models" tab to see registered models:
+# - iris-classifier-sklearn (Python-compatible)
+# - iris-classifier-onnx (Cross-platform compatible)
+```
 
 #### Registry-Based Classification
 
+**Using Model Aliases (MLflow 3.x Recommended)**
 ```bash
-# Classify using model from MLflow registry (Production stage)
+# Classify using Production alias
 curl -X POST http://localhost:3000/api/v1/classify-registry \
   -H "Content-Type: application/json" \
   -d '{
@@ -422,7 +463,10 @@ curl -X POST http://localhost:3000/api/v1/classify-registry \
     "model_format": "onnx",
     "stage": "Production"
   }'
+```
 
+**Using Specific Versions**
+```bash
 # Classify using specific model version
 curl -X POST http://localhost:3000/api/v1/classify-registry \
   -H "Content-Type: application/json" \
@@ -432,7 +476,21 @@ curl -X POST http://localhost:3000/api/v1/classify-registry \
     "petal_length": 4.7,
     "petal_width": 1.4,
     "model_format": "onnx",
-    "version": "1"
+    "version": "5"
+  }'
+```
+
+**Using Latest Version (No Parameters)**
+```bash
+# Classify using latest available version
+curl -X POST http://localhost:3000/api/v1/classify-registry \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sepal_length": 6.3,
+    "sepal_width": 3.3,
+    "petal_length": 6.0,
+    "petal_width": 2.5,
+    "model_format": "onnx"
   }'
 ```
 
@@ -849,10 +907,95 @@ npm run test            # Run tests
 
 - `PORT`: Server port (default: 3000)
 - `OLLAMA_URL`: Ollama API URL (default: http://localhost:11434)
+- `MLFLOW_TRACKING_URI`: MLflow server URL (default: http://localhost:5004)
 
 ### Model Configuration
 
 The ONNX model (`iris_classifier.onnx`) is automatically loaded at startup. Ensure the model file is present in the `models/` directory.
+
+## 🔧 Troubleshooting
+
+### MLflow Registry Issues
+
+#### "Failed to connect to MLflow registry" Error
+```bash
+# Check if MLflow server is running
+curl http://localhost:5004/health
+
+# If not running, start with proper flags:
+mlflow server --host 0.0.0.0 --port 5004 --serve-artifacts
+```
+
+#### "Failed to download model from MLflow registry" Error
+This usually means MLflow server was started without the `--serve-artifacts` flag:
+
+```bash
+# ❌ Wrong way (no artifact serving)
+mlflow server --host 0.0.0.0 --port 5004
+
+# ✅ Correct way (with artifact serving)
+mlflow server --host 0.0.0.0 --port 5004 --serve-artifacts
+```
+
+#### "No version found for model with stage/alias" Error
+This means the requested stage or alias doesn't exist:
+
+```bash
+# Check available models and aliases
+curl http://localhost:5004/api/2.0/mlflow/registered-models/list
+
+# Check specific model details
+curl "http://localhost:5004/api/2.0/mlflow/registered-models/get?name=iris-classifier-onnx"
+```
+
+#### Setting Up Model Aliases
+If you see "No version found" errors, you may need to set up model aliases:
+
+```bash
+# From the ai-backends-py project directory
+cd ../ai-backends-py
+
+# Set up production alias for version 5
+python scripts/manage_models.py --alias iris-classifier-onnx 5 production
+
+# Verify alias was created
+curl "http://localhost:5004/api/2.0/mlflow/registered-models/get?name=iris-classifier-onnx"
+```
+
+### ONNX Model Issues
+
+#### "Cannot read properties of undefined (reading 'data')" Error
+This error has been fixed with comprehensive tensor validation. If you still see it:
+
+1. Ensure you're using tensor-only ONNX models (created by the updated training script)
+2. Check that the model was exported with `zipmap: False` and `nocl: True` options
+3. Verify the ONNX model has the expected output names: 'label' and 'probabilities'
+
+### General Issues
+
+#### "EADDRINUSE: address already in use" Error
+```bash
+# Check what's using the port
+lsof -i :3000
+
+# Kill the process using the port
+pkill -f "node.*nest"
+
+# Or use different port
+PORT=3001 npm run start:dev
+```
+
+#### Ollama Connection Issues
+```bash
+# Check if Ollama is running
+curl http://localhost:11434/api/tags
+
+# Start Ollama (macOS)
+brew services start ollama
+
+# Pull required model
+ollama pull tinyllama
+```
 
 ## 📚 Concepts Demonstrated
 
