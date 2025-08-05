@@ -42,6 +42,21 @@ import {
   PerformanceComparisonResponseDto,
   SerializationChallengeResponseDtoClass
 } from './dto/performance.dto';
+import {
+  DriftReportRequestSchema,
+  DriftReportRequestDto,
+  DriftReportRequest,
+  DriftReportResponse,
+  MLflowRegistryRequestSchema,
+  MLflowRegistryRequestDto,
+  MLflowRegistryRequest,
+  MLflowRegistryResponse,
+  DriftSimulationRequestSchema,
+  DriftSimulationRequestDto,
+  DriftSimulationRequest,
+  DriftSimulationResponse,
+  MonitoringStatsResponse
+} from './dto/phase4.dto';
 
 /**
  * Controller for model inference endpoints
@@ -709,5 +724,227 @@ export class InferenceController {
   @UsePipes(new ZodValidationPipe(GenerateRequestSchema))
   public async generateTextV2(@Body() request: GenerateRequestDto): Promise<Record<string, unknown>> {
     return this.inferenceService.generateTextV2(request);
+  }
+
+  // ==================== Phase 4: Model Lifecycle Management & Monitoring ====================
+
+  /**
+   * Generate comprehensive drift report using Evidently AI statistical analysis
+   * 
+   * @param request - Drift analysis configuration
+   * @returns Statistical drift analysis with recommendations
+   */
+  @Get('drift-report')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Generate model drift monitoring report',
+    description: 'Performs comprehensive statistical drift analysis using production request logs compared to reference dataset. Utilizes Kolmogorov-Smirnov tests for feature-level drift detection with educational bias simulation capabilities.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Drift analysis completed successfully',
+    type: DriftReportResponse
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid analysis parameters or insufficient production data' 
+  })
+  @ApiResponse({ 
+    status: 500, 
+    description: 'Drift analysis failed (Python environment or processing error)' 
+  })
+  public async generateDriftReport(): Promise<Record<string, unknown>> {
+    return this.inferenceService.generateDriftReport();
+  }
+
+  /**
+   * Drift simulation with systematic bias injection for educational purposes
+   * 
+   * @param request - Classification request for drift simulation
+   * @returns Comparison of original vs biased predictions with drift impact analysis
+   */
+  @Post('classify-shifted')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Drift simulation with systematic bias injection',
+    description: 'Educational endpoint that applies systematic bias (sepal_length +1.5, petal_width *1.3) to demonstrate data drift impact on model predictions. Compares original vs shifted predictions with detailed analysis.'
+  })
+  @ApiBody({ 
+    type: DriftSimulationRequest,
+    description: 'Iris measurements for drift simulation',
+    examples: {
+      setosa: {
+        summary: 'Setosa drift simulation',
+        value: {
+          sepal_length: 5.1,
+          sepal_width: 3.5,
+          petal_length: 1.4,
+          petal_width: 0.2
+        }
+      },
+      virginica: {
+        summary: 'Virginica drift simulation', 
+        value: {
+          sepal_length: 6.3,
+          sepal_width: 3.3,
+          petal_length: 6.0,
+          petal_width: 2.5
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Drift simulation completed successfully',
+    type: DriftSimulationResponse
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid measurements for drift simulation' 
+  })
+  @ApiResponse({ 
+    status: 503, 
+    description: 'ONNX model unavailable for drift simulation' 
+  })
+  @UsePipes(new ZodValidationPipe(DriftSimulationRequestSchema))
+  public async classifyWithDriftSimulation(@Body() request: DriftSimulationRequestDto): Promise<Record<string, unknown>> {
+    return this.inferenceService.classifyWithDriftSimulation(request);
+  }
+
+  /**
+   * Classify using model from MLflow registry with version/stage support
+   * 
+   * @param request - Classification request with MLflow registry parameters
+   * @returns Classification results with comprehensive registry metadata
+   */
+  @Post('classify-registry')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Classify using MLflow model registry',
+    description: 'Performs Iris classification using models loaded directly from MLflow Model Registry. Supports version-specific loading (e.g., version="1") and stage-based loading (e.g., stage="Production"). Demonstrates centralized model lifecycle management.'
+  })
+  @ApiBody({ 
+    type: MLflowRegistryRequest,
+    description: 'Iris measurements with MLflow registry configuration',
+    examples: {
+      production: {
+        summary: 'Production model (latest)',
+        value: {
+          sepal_length: 5.1,
+          sepal_width: 3.5,
+          petal_length: 1.4,
+          petal_width: 0.2,
+          model_format: 'onnx',
+          stage: 'Production'
+        }
+      },
+      specific_version: {
+        summary: 'Specific model version',
+        value: {
+          sepal_length: 7.0,
+          sepal_width: 3.2,
+          petal_length: 4.7,
+          petal_width: 1.4,
+          model_format: 'onnx',
+          version: '1'
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Registry-based classification completed successfully',
+    type: MLflowRegistryResponse
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid measurements or unsupported model format' 
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Model not found in registry (check model name, version, or stage)' 
+  })
+  @ApiResponse({ 
+    status: 500, 
+    description: 'MLflow registry unavailable or model loading failed' 
+  })
+  @UsePipes(new ZodValidationPipe(MLflowRegistryRequestSchema))
+  public async classifyFromRegistry(@Body() request: MLflowRegistryRequestDto): Promise<Record<string, unknown>> {
+    return this.inferenceService.classifyFromRegistry(
+      request, 
+      request.model_format, 
+      request.version, 
+      request.stage
+    );
+  }
+
+  /**
+   * List all registered models in MLflow registry
+   * 
+   * @returns List of registered models with metadata
+   */
+  @Get('models')
+  @ApiOperation({ 
+    summary: 'List MLflow registered models',
+    description: 'Returns all models registered in the MLflow Model Registry with their versions, stages, and metadata. Useful for model discovery and lifecycle management.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Registered models retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        models: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', example: 'iris-classifier-onnx' },
+              creation_timestamp: { type: 'number', example: 1642689000000 },
+              last_updated_timestamp: { type: 'number', example: 1642689000000 },
+              latest_versions: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    version: { type: 'string', example: '1' },
+                    stage: { type: 'string', example: 'Production' },
+                    creation_timestamp: { type: 'number', example: 1642689000000 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        total_count: { type: 'number', example: 2 },
+        registry_status: { type: 'string', example: 'available' }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 500, 
+    description: 'MLflow registry unavailable or connection failed' 
+  })
+  public async listRegisteredModels(): Promise<Record<string, unknown>> {
+    return this.inferenceService.listRegisteredModels();
+  }
+
+  /**
+   * Get production monitoring statistics
+   * 
+   * @returns Current monitoring status and sample counts
+   */
+  @Get('monitoring-stats')
+  @ApiOperation({ 
+    summary: 'Get drift monitoring statistics',
+    description: 'Returns current production monitoring status including sample counts for both production requests and reference data. Useful for monitoring system health and data availability.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Monitoring statistics retrieved successfully',
+    type: MonitoringStatsResponse
+  })
+  public getMonitoringStats(): Record<string, unknown> {
+    return this.inferenceService.getMonitoringStats();
   }
 }

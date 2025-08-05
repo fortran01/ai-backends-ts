@@ -1,6 +1,6 @@
-# AI Backends TypeScript/NestJS - Phase 1, 2 & 3 Implementation
+# AI Backends TypeScript/NestJS - Phase 1, 2, 3 & 4 Implementation
 
-This project demonstrates the complete Phase 1, 2, and 3 implementation of AI backends using TypeScript and NestJS framework, showcasing advanced approaches to serving machine learning models with stateful conversation memory, high-performance gRPC communication, advanced caching strategies, API versioning, and comprehensive security features.
+This project demonstrates the complete Phase 1, 2, 3, and 4 implementation of AI backends using TypeScript and NestJS framework, showcasing advanced approaches to serving machine learning models with stateful conversation memory, high-performance gRPC communication, advanced caching strategies, API versioning, model lifecycle management, drift monitoring, and comprehensive security features.
 
 ## 🎯 Project Overview
 
@@ -29,6 +29,14 @@ This implementation covers foundational and advanced concepts of AI model servin
 - **Enhanced Metadata**: Additional response metadata and performance metrics in v2 API
 - **Vector Embeddings**: Xenova/all-MiniLM-L6-v2 model for semantic similarity computation
 
+### Phase 4 Features ✅
+- **Production Model Lifecycle Management**: MLflow Model Registry integration for centralized model versioning
+- **Drift Monitoring**: Comprehensive statistical drift detection using Evidently AI via Python integration
+- **Automated Production Logging**: All classification requests automatically logged for drift analysis
+- **Registry-Based Model Loading**: Dynamic model loading from MLflow with version/stage support
+- **Cross-Language Integration**: TypeScript calling Python-based monitoring tools for best-in-class analysis
+- **Educational Drift Simulation**: Systematic bias injection to demonstrate drift impact on predictions
+
 ## 📁 Project Structure
 
 ```
@@ -55,7 +63,9 @@ ai-backends-ts/
 │   │       ├── memory.service.ts  # Structured message conversation memory
 │   │       ├── grpc.service.ts    # gRPC client communication
 │   │       ├── http.service.ts    # HTTP server client communication
-│   │       └── semantic-cache.service.ts # Phase 3: Semantic caching with embeddings
+│   │       ├── semantic-cache.service.ts # Phase 3: Semantic caching with embeddings
+│   │       ├── drift-monitoring.service.ts # Phase 4: Production monitoring & Evidently integration
+│   │       └── mlflow.service.ts  # Phase 4: MLflow Model Registry integration
 │   └── generated/                 # Auto-generated gRPC code
 │       ├── inference_pb.js        # Protocol buffer definitions
 │       ├── inference_pb.d.ts      # TypeScript definitions
@@ -65,6 +75,11 @@ ai-backends-ts/
 │   └── inference.proto            # gRPC protocol definition
 ├── models/
 │   └── iris_classifier.onnx       # Secure ONNX model
+├── data/                          # Phase 4: Production monitoring data
+│   ├── production_requests.csv    # Automated logging of classify requests
+│   ├── reference_data.csv         # Reference dataset for drift comparison
+│   └── drift_report.html          # Interactive Evidently drift reports
+├── cached_models/                 # Phase 4: MLflow model cache directory
 ├── scripts/
 │   └── batch-inference.ts         # Batch processing script
 ├── grpc-server.ts                 # Standalone gRPC server
@@ -85,6 +100,17 @@ ai-backends-ts/
    # Install Ollama from https://ollama.com
    ollama pull tinyllama
    ollama serve  # Start Ollama service
+   ```
+3. **Python 3.8+** (for Phase 4 drift monitoring):
+   ```bash
+   # Install Python packages for drift analysis
+   pip install pandas numpy scipy
+   ```
+4. **MLflow Server** (optional for Phase 4 registry features):
+   ```bash
+   # Install and start MLflow tracking server
+   pip install mlflow
+   mlflow server --host 0.0.0.0 --port 5000
    ```
 
 ### Installation
@@ -168,6 +194,8 @@ ai-backends-ts/
 | `/api/v1/classify-grpc` | POST | **Phase 2**: High-performance gRPC classification |
 | `/api/v1/classify-benchmark` | POST | **Phase 2**: HTTP vs gRPC fair performance comparison |
 | `/api/v1/classify-detailed` | POST | **Phase 2**: Serialization challenge demonstrations |
+| `/api/v1/classify-registry` | POST | **Phase 4**: MLflow registry-based classification with version/stage support |
+| `/api/v1/classify-shifted` | POST | **Phase 4**: Drift simulation with systematic bias injection |
 
 #### Example Request:
 ```json
@@ -198,6 +226,263 @@ ai-backends-ts/
     "version": "1.0",
     "inference_time_ms": 2.5
   }
+}
+```
+
+### Model Lifecycle & Monitoring
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/drift-report` | GET | **Phase 4**: Generate comprehensive drift analysis using Evidently AI |
+| `/api/v1/models` | GET | **Phase 4**: List all MLflow registered models with versions and stages |
+| `/api/v1/monitoring-stats` | GET | **Phase 4**: Get production monitoring statistics and sample counts |
+
+## 🔬 Phase 4: Model Lifecycle Management & Monitoring Examples
+
+### Drift Monitoring Demo
+
+#### Production Request Logging
+
+All classification requests are automatically logged for drift monitoring:
+
+```bash
+# Make some classification requests to generate production data
+curl -X POST http://localhost:3000/api/v1/classify \
+  -H "Content-Type: application/json" \
+  -d '{"sepal_length": 5.1, "sepal_width": 3.5, "petal_length": 1.4, "petal_width": 0.2}'
+
+curl -X POST http://localhost:3000/api/v1/classify \
+  -H "Content-Type: application/json" \
+  -d '{"sepal_length": 6.3, "sepal_width": 3.3, "petal_length": 6.0, "petal_width": 2.5}'
+```
+
+#### Drift Analysis Report
+
+```bash
+# Generate comprehensive drift analysis
+curl -X GET http://localhost:3000/api/v1/drift-report
+```
+
+**Expected Response (after drift simulation):**
+```json
+{
+  "data_summary": {
+    "analysis_period": "last 16 requests",
+    "analyzed_samples": 16,
+    "reference_samples": 120,
+    "total_production_samples": 16
+  },
+  "drift_analysis": {
+    "analysis_timestamp": "2025-08-05T11:00:28.015942Z",
+    "drift_detected": true,
+    "feature_drift_scores": {
+      "sepal_length": {
+        "drift_detected": true,
+        "drift_score": 1.077,
+        "statistical_test": "ks"
+      },
+      "sepal_width": {
+        "drift_detected": true,
+        "drift_score": 0.707,
+        "statistical_test": "ks"
+      },
+      "petal_length": {
+        "drift_detected": true,
+        "drift_score": 0.950,
+        "statistical_test": "ks"
+      },
+      "petal_width": {
+        "drift_detected": true,
+        "drift_score": 1.219,
+        "statistical_test": "ks"
+      }
+    },
+    "overall_drift_score": 0.9883
+  },
+  "recommendations": {
+    "investigate_features": [
+      "sepal_length",
+      "sepal_width", 
+      "petal_length",
+      "petal_width"
+    ],
+    "monitoring_status": "HIGH_DRIFT",
+    "retrain_model": true
+  },
+  "reports": {
+    "html_report_path": "data/drift_report.html",
+    "html_report_size_kb": 3508.61
+  }
+}
+```
+
+#### Drift Simulation
+
+```bash
+# Simulate data drift with aggressive systematic bias
+curl -X POST http://localhost:3000/api/v1/classify-shifted \
+  -H "Content-Type: application/json" \
+  -d '{"sepal_length": 5.1, "sepal_width": 3.5, "petal_length": 1.4, "petal_width": 0.2}'
+```
+
+**Expected Response:**
+```json
+{
+  "drift_simulation": {
+    "applied_shifts": {
+      "sepal_length": "+3.0 units",
+      "sepal_width": "*0.8 multiplier", 
+      "petal_length": "+2.5 units",
+      "petal_width": "*2.0 multiplier"
+    },
+    "confidence_change": -0.52,
+    "feature_changes": {
+      "sepal_length": {
+        "original": 5.1,
+        "shifted": 8.1,
+        "absolute_change": 3.0,
+        "relative_change_percent": 58.82,
+        "bias_type": "additive"
+      },
+      "sepal_width": {
+        "original": 3.5,
+        "shifted": 2.8,
+        "absolute_change": -0.7,
+        "relative_change_percent": -20.0,
+        "bias_type": "multiplicative"
+      },
+      "petal_length": {
+        "original": 1.4,
+        "shifted": 3.9,
+        "absolute_change": 2.5,
+        "relative_change_percent": 178.57,
+        "bias_type": "additive"
+      },
+      "petal_width": {
+        "original": 0.2,
+        "shifted": 0.4,
+        "absolute_change": 0.2,
+        "relative_change_percent": 100.0,
+        "bias_type": "multiplicative"
+      }
+    },
+    "prediction_changed": true
+  },
+  "original_prediction": {
+    "predicted_class": "setosa",
+    "confidence": 1.0
+  },
+  "shifted_prediction": {
+    "predicted_class": "versicolor",
+    "confidence": 0.48
+  }
+}
+```
+
+#### Enhanced Drift Detection Features
+
+The drift monitoring system now includes several advanced features:
+
+**Aggressive Bias Patterns**: 
+- All four features receive significant bias (sepal_length: +3.0, sepal_width: *0.8, petal_length: +2.5, petal_width: *2.0)
+- Bias patterns cause classification changes (e.g., setosa → versicolor)
+- Relative changes range from 20% to 178% per feature
+
+**Statistical Test Enhancements**:
+- Wasserstein distance statistical tests for better sensitivity
+- Lower drift detection threshold (drift_share=0.25) 
+- Bidirectional data synchronization between TypeScript and Python services
+- Real-time production data logging and analysis
+
+**Python Service Integration**:
+- HTTP calls to Python Flask service (`ai-backends-py`) for comprehensive analysis
+- Evidently AI framework for industry-standard drift monitoring
+- Interactive HTML reports with detailed statistical analysis
+- Cross-language integration maintaining TypeScript-native logging
+
+**Performance Results**:
+- Overall drift score: 98.83% (extremely high drift detected)
+- All features show significant drift (scores: 0.707 to 1.219)
+- Monitoring status: "HIGH_DRIFT" with retrain recommendation
+- Enhanced bias patterns successfully demonstrate detectable drift scenarios
+
+### MLflow Model Registry Demo
+
+#### Registry-Based Classification
+
+```bash
+# Classify using model from MLflow registry (Production stage)
+curl -X POST http://localhost:3000/api/v1/classify-registry \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sepal_length": 5.1,
+    "sepal_width": 3.5,
+    "petal_length": 1.4,
+    "petal_width": 0.2,
+    "model_format": "onnx",
+    "stage": "Production"
+  }'
+
+# Classify using specific model version
+curl -X POST http://localhost:3000/api/v1/classify-registry \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sepal_length": 7.0,
+    "sepal_width": 3.2,
+    "petal_length": 4.7,
+    "petal_width": 1.4,
+    "model_format": "onnx",
+    "version": "1"
+  }'
+```
+
+**Expected Response (if MLflow is available):**
+```json
+{
+  "predicted_class": "setosa",
+  "predicted_class_index": 0,
+  "probabilities": [0.95, 0.03, 0.02],
+  "confidence": 0.95,
+  "registry_metadata": {
+    "model_uri": "models:/iris-classifier-onnx/1",
+    "model_name": "iris-classifier-onnx",
+    "version": "1",
+    "stage": "Production",
+    "run_id": "abc123",
+    "creation_timestamp": 1642689000000
+  }
+}
+```
+
+#### List Registered Models
+
+```bash
+# Get all registered models and their versions
+curl -X GET http://localhost:3000/api/v1/models
+```
+
+### Monitoring Statistics
+
+```bash
+# Get current monitoring status
+curl -X GET http://localhost:3000/api/v1/monitoring-stats
+```
+
+**Response:**
+```json
+{
+  "data_directory": "/app/data",
+  "production_log": {
+    "exists": true,
+    "path": "/app/data/production_requests.csv",
+    "sample_count": 25
+  },
+  "reference_data": {
+    "exists": true,
+    "path": "/app/data/reference_data.csv", 
+    "sample_count": 9
+  },
+  "monitoring_active": true
 }
 ```
 
@@ -571,7 +856,7 @@ The ONNX model (`iris_classifier.onnx`) is automatically loaded at startup. Ensu
 
 ## 📚 Concepts Demonstrated
 
-This Phase 1, 2 & 3 implementation covers these key module concepts:
+This Phase 1, 2, 3 & 4 implementation covers these key module concepts:
 
 ### Phase 1 Concepts ✅
 - **1.2**: Separation of Concerns (API ↔ Ollama ↔ ONNX Runtime)
@@ -596,6 +881,14 @@ This Phase 1, 2 & 3 implementation covers these key module concepts:
 - **Vector Embeddings**: Semantic similarity computation using transformers
 - **Advanced Caching Patterns**: Cache hit/miss optimization and performance analysis
 - **Production API Features**: Enhanced metadata, performance metrics, and request tracking
+
+### Phase 4 Concepts ✅
+- **6.2**: Model Registries (MLflow Model Registry for centralized model lifecycle management)
+- **6.3**: Monitoring for Model & Data Drift (comprehensive monitoring with Evidently AI, statistical drift detection, and automated alerting)
+- **Cross-Language Integration**: TypeScript calling Python-based monitoring tools for best-in-class functionality
+- **Production Logging**: Automated request logging with CSV output for drift analysis
+- **Model Versioning**: Dynamic model loading with stage-based deployment (None → Staging → Production → Archived)
+- **Drift Simulation**: Educational bias injection demonstrating real-world drift scenarios
 
 ## 🛠️ Architecture Highlights
 
@@ -632,7 +925,6 @@ This Phase 1, 2 & 3 implementation covers these key module concepts:
 
 Upcoming phases will add:
 
-- **Phase 4**: Model lifecycle management and drift monitoring with MLflow
 - **Phase 5**: Dedicated model serving with TensorFlow Serving/Triton
 - **Phase 6**: Advanced LLM orchestration with RAG (Retrieval-Augmented Generation)
 - **Phase 7**: Production deployment with containerization and orchestration

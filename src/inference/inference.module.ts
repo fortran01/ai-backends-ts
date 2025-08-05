@@ -10,6 +10,8 @@ import { MemoryService } from './services/memory.service';
 import { GrpcService } from './services/grpc.service';
 import { HttpInferenceService } from './services/http.service';
 import { SemanticCacheService } from './services/semantic-cache.service';
+import { DriftMonitoringService } from './services/drift-monitoring.service';
+import { MlflowService } from './services/mlflow.service';
 
 /**
  * Inference module containing all model serving functionality
@@ -39,6 +41,8 @@ import { SemanticCacheService } from './services/semantic-cache.service';
     GrpcService,
     HttpInferenceService,
     SemanticCacheService,
+    DriftMonitoringService,
+    MlflowService,
   ],
   exports: [
     InferenceService, // Export for use in other modules if needed

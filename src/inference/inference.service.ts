@@ -6,6 +6,8 @@ import { MemoryService } from './services/memory.service';
 import { GrpcService } from './services/grpc.service';
 import { HttpInferenceService } from './services/http.service';
 import { SemanticCacheService } from './services/semantic-cache.service';
+import { DriftMonitoringService } from './services/drift-monitoring.service';
+import { MlflowService } from './services/mlflow.service';
 import { 
   GenerateRequestDto, 
   GenerateResponseDto, 
@@ -34,7 +36,9 @@ export class InferenceService {
     private readonly memoryService: MemoryService,
     private readonly grpcService: GrpcService,
     private readonly httpInferenceService: HttpInferenceService,
-    private readonly semanticCacheService: SemanticCacheService
+    private readonly semanticCacheService: SemanticCacheService,
+    private readonly driftMonitoringService: DriftMonitoringService,
+    private readonly mlflowService: MlflowService
   ) {}
 
   /**
@@ -148,13 +152,18 @@ export class InferenceService {
   }
 
   /**
-   * Classify Iris species using ONNX model
+   * Classify Iris species using ONNX model with production logging
    * 
    * @param request - Classification request with Iris features
    * @returns Comprehensive classification results
    */
   public async classifyIris(request: ClassifyRequestDto): Promise<ClassifyResponseDto> {
-    return this.onnxService.classifyIris(request);
+    const result: ClassifyResponseDto = await this.onnxService.classifyIris(request);
+    
+    // Log request and response for production monitoring (Phase 4)
+    await this.driftMonitoringService.logClassificationRequest(request, result);
+    
+    return result;
   }
 
   /**
@@ -553,11 +562,12 @@ export class InferenceService {
    * @returns Service status information
    */
   public async getServiceStatus(): Promise<Record<string, unknown>> {
-    const [ollamaAvailable, onnxReady, grpcStatus, httpStatus] = await Promise.all([
+    const [ollamaAvailable, onnxReady, grpcStatus, httpStatus, mlflowStatus] = await Promise.all([
       this.ollamaService.isServiceAvailable(),
       Promise.resolve(this.onnxService.isModelReady()),
       this.grpcService.getGrpcStatus(),
-      this.httpInferenceService.getHttpStatus()
+      this.httpInferenceService.getHttpStatus(),
+      this.mlflowService.getMLflowStatus()
     ]);
 
     return {
@@ -575,7 +585,89 @@ export class InferenceService {
         available: true,
         cache_size: this.semanticCacheService.getCacheSize(),
         embedding_model: 'Xenova/all-MiniLM-L6-v2'
+      },
+      mlflow: mlflowStatus,
+      drift_monitoring: this.driftMonitoringService.getMonitoringStats()
+    };
+  }
+
+  /**
+   * Generate drift report using Evidently AI integration
+   * 
+   * @param limit - Number of recent requests to analyze (default: 100)
+   * @returns Drift analysis results and recommendations
+   */
+  public async generateDriftReport(limit: number = 100): Promise<Record<string, unknown>> {
+    return this.driftMonitoringService.generateDriftReport(limit);
+  }
+
+  /**
+   * Classify with drift simulation using Python Flask service
+   * 
+   * @param request - Classification request with Iris features
+   * @returns Drift simulation results from Python service with comprehensive analysis
+   */
+  public async classifyWithDriftSimulation(request: ClassifyRequestDto): Promise<Record<string, unknown>> {
+    return this.driftMonitoringService.generateDriftSimulation(request);
+  }
+
+  /**
+   * Classify using model from MLflow registry
+   * 
+   * @param request - Classification request with Iris features
+   * @param modelFormat - Model format (sklearn or onnx, defaults to onnx)
+   * @param version - Model version (optional)
+   * @param stage - Model stage (optional)
+   * @returns Classification results with registry metadata
+   */
+  public async classifyFromRegistry(
+    request: ClassifyRequestDto,
+    modelFormat: string = 'onnx',
+    version?: string,
+    stage?: string
+  ): Promise<Record<string, unknown>> {
+    const result = await this.mlflowService.classifyFromRegistry(request, modelFormat, version, stage);
+    
+    // Log registry-based request for drift monitoring
+    const classifyResult: ClassifyResponseDto = {
+      predicted_class: result.predicted_class as string,
+      predicted_class_index: result.predicted_class_index as number,
+      probabilities: result.probabilities as number[],
+      confidence: result.confidence as number,
+      class_names: result.class_names as string[],
+      input_features: {
+        sepal_length: request.sepal_length,
+        sepal_width: request.sepal_width,
+        petal_length: request.petal_length,
+        petal_width: request.petal_width
+      },
+      model_info: {
+        format: 'ONNX',
+        version: '1.0',
+        inference_time_ms: 0
       }
     };
+    
+    await this.driftMonitoringService.logClassificationRequest(request, classifyResult);
+    
+    return result;
+  }
+
+  /**
+   * List registered models in MLflow
+   * 
+   * @returns List of registered models with metadata
+   */
+  public async listRegisteredModels(): Promise<Record<string, unknown>> {
+    return this.mlflowService.listRegisteredModels();
+  }
+
+  /**
+   * Get monitoring statistics
+   * 
+   * @returns Current monitoring status and metrics
+   */
+  public getMonitoringStats(): Record<string, unknown> {
+    return this.driftMonitoringService.getMonitoringStats();
   }
 }
