@@ -182,7 +182,7 @@ export class DriftMonitoringService {
       this.logger.log('Successfully generated drift report via Python Flask service');
       return response.data;
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error('Failed to generate drift report via Python Flask service', error);
       
       // Check if it's a connection error
@@ -232,7 +232,7 @@ export class DriftMonitoringService {
       this.logger.log('Successfully generated drift simulation via Python Flask service');
       return response.data;
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error('Failed to generate drift simulation via Python Flask service', error);
       
       // Check if it's a connection error

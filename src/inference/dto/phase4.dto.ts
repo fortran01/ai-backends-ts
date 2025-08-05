@@ -51,7 +51,7 @@ export class DriftReportRequest {
     required: false,
     default: 100
   })
-  limit?: number = 100;
+  public limit?: number = 100;
 }
 
 export class MLflowRegistryRequest {
@@ -61,7 +61,7 @@ export class MLflowRegistryRequest {
     minimum: 0,
     maximum: 10
   })
-  sepal_length!: number;
+  public sepal_length!: number;
 
   @ApiProperty({
     description: 'Sepal width measurement in centimeters',
@@ -69,7 +69,7 @@ export class MLflowRegistryRequest {
     minimum: 0,
     maximum: 10
   })
-  sepal_width!: number;
+  public sepal_width!: number;
 
   @ApiProperty({
     description: 'Petal length measurement in centimeters',
@@ -77,7 +77,7 @@ export class MLflowRegistryRequest {
     minimum: 0,
     maximum: 10
   })
-  petal_length!: number;
+  public petal_length!: number;
 
   @ApiProperty({
     description: 'Petal width measurement in centimeters',
@@ -85,7 +85,7 @@ export class MLflowRegistryRequest {
     minimum: 0,
     maximum: 10
   })
-  petal_width!: number;
+  public petal_width!: number;
 
   @ApiProperty({
     description: 'Model format to use from registry',
@@ -94,14 +94,14 @@ export class MLflowRegistryRequest {
     required: false,
     default: 'onnx'
   })
-  model_format?: string = 'onnx';
+  public model_format?: string = 'onnx';
 
   @ApiProperty({
     description: 'Specific model version to use (e.g., "1", "2")',
     example: '1',
     required: false
   })
-  version?: string;
+  public version?: string;
 
   @ApiProperty({
     description: 'Model stage to use from registry',
@@ -109,7 +109,7 @@ export class MLflowRegistryRequest {
     enum: ['None', 'Staging', 'Production', 'Archived'],
     required: false
   })
-  stage?: string;
+  public stage?: string;
 }
 
 export class DriftSimulationRequest {
@@ -119,7 +119,7 @@ export class DriftSimulationRequest {
     minimum: 0,
     maximum: 10
   })
-  sepal_length!: number;
+  public sepal_length!: number;
 
   @ApiProperty({
     description: 'Sepal width measurement in centimeters',
@@ -127,7 +127,7 @@ export class DriftSimulationRequest {
     minimum: 0,
     maximum: 10
   })
-  sepal_width!: number;
+  public sepal_width!: number;
 
   @ApiProperty({
     description: 'Petal length measurement in centimeters',
@@ -135,7 +135,7 @@ export class DriftSimulationRequest {
     minimum: 0,
     maximum: 10
   })
-  petal_length!: number;
+  public petal_length!: number;
 
   @ApiProperty({
     description: 'Petal width measurement in centimeters',
@@ -143,7 +143,7 @@ export class DriftSimulationRequest {
     minimum: 0,
     maximum: 10
   })
-  petal_width!: number;
+  public petal_width!: number;
 }
 
 /**
@@ -169,7 +169,7 @@ export class DriftReportResponse {
       }
     }
   })
-  drift_analysis!: Record<string, unknown>;
+  public drift_analysis!: Record<string, unknown>;
 
   @ApiProperty({
     description: 'Data summary for the analysis',
@@ -179,13 +179,13 @@ export class DriftReportResponse {
       analysis_limit: 100
     }
   })
-  data_summary!: Record<string, unknown>;
+  public data_summary!: Record<string, unknown>;
 
   @ApiProperty({
     description: 'Recommendations based on drift analysis',
     example: ['✅ Data distribution is stable', 'Continue normal monitoring']
   })
-  recommendations!: string[];
+  public recommendations!: string[];
 
   @ApiProperty({
     description: 'Monitoring status and alert levels',
@@ -194,7 +194,7 @@ export class DriftReportResponse {
       requires_attention: false
     }
   })
-  monitoring_status!: Record<string, unknown>;
+  public monitoring_status!: Record<string, unknown>;
 }
 
 export class MLflowRegistryResponse {
@@ -202,31 +202,31 @@ export class MLflowRegistryResponse {
     description: 'Predicted Iris species class name',
     example: 'setosa'
   })
-  predicted_class!: string;
+  public predicted_class!: string;
 
   @ApiProperty({
     description: 'Predicted class index (0=setosa, 1=versicolor, 2=virginica)',
     example: 0
   })
-  predicted_class_index!: number;
+  public predicted_class_index!: number;
 
   @ApiProperty({
     description: 'Classification probabilities for each class',
     example: [0.95, 0.03, 0.02]
   })
-  probabilities!: number[];
+  public probabilities!: number[];
 
   @ApiProperty({
     description: 'Confidence score (highest probability)',
     example: 0.95
   })
-  confidence!: number;
+  public confidence!: number;
 
   @ApiProperty({
     description: 'Available class names',
     example: ['setosa', 'versicolor', 'virginica']
   })
-  class_names!: string[];
+  public class_names!: string[];
 
   @ApiProperty({
     description: 'Input features used for classification',
@@ -237,7 +237,7 @@ export class MLflowRegistryResponse {
       petal_width: 0.2
     }
   })
-  input_features!: Record<string, number>;
+  public input_features!: Record<string, number>;
 
   @ApiProperty({
     description: 'Model information and performance metrics',
@@ -247,7 +247,7 @@ export class MLflowRegistryResponse {
       source: 'MLflow Registry'
     }
   })
-  model_info!: Record<string, unknown>;
+  public model_info!: Record<string, unknown>;
 
   @ApiProperty({
     description: 'MLflow registry metadata',
@@ -260,7 +260,7 @@ export class MLflowRegistryResponse {
       creation_timestamp: 1642689000000
     }
   })
-  registry_metadata!: Record<string, unknown>;
+  public registry_metadata!: Record<string, unknown>;
 }
 
 export class DriftSimulationResponse {
@@ -273,7 +273,7 @@ export class DriftSimulationResponse {
       confidence: 0.95
     }
   })
-  original_prediction!: Record<string, unknown>;
+  public original_prediction!: Record<string, unknown>;
 
   @ApiProperty({
     description: 'Classification results with applied bias',
@@ -284,7 +284,7 @@ export class DriftSimulationResponse {
       confidence: 0.78
     }
   })
-  shifted_prediction!: Record<string, unknown>;
+  public shifted_prediction!: Record<string, unknown>;
 
   @ApiProperty({
     description: 'Details of the systematic bias applied',
@@ -303,7 +303,7 @@ export class DriftSimulationResponse {
       }
     }
   })
-  bias_applied!: Record<string, unknown>;
+  public bias_applied!: Record<string, unknown>;
 
   @ApiProperty({
     description: 'Analysis of prediction changes due to drift',
@@ -314,7 +314,7 @@ export class DriftSimulationResponse {
       drift_impact: 'significant'
     }
   })
-  drift_analysis!: Record<string, unknown>;
+  public drift_analysis!: Record<string, unknown>;
 }
 
 export class MonitoringStatsResponse {
@@ -322,7 +322,7 @@ export class MonitoringStatsResponse {
     description: 'Data directory path',
     example: '/app/data'
   })
-  data_directory!: string;
+  public data_directory!: string;
 
   @ApiProperty({
     description: 'Production log file information',
@@ -332,7 +332,7 @@ export class MonitoringStatsResponse {
       sample_count: 25
     }
   })
-  production_log!: Record<string, unknown>;
+  public production_log!: Record<string, unknown>;
 
   @ApiProperty({
     description: 'Reference data information',
@@ -342,11 +342,11 @@ export class MonitoringStatsResponse {
       sample_count: 9
     }
   })
-  reference_data!: Record<string, unknown>;
+  public reference_data!: Record<string, unknown>;
 
   @ApiProperty({
     description: 'Monitoring system status',
     example: true
   })
-  monitoring_active!: boolean;
+  public monitoring_active!: boolean;
 }

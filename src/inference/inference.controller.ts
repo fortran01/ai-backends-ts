@@ -43,9 +43,6 @@ import {
   SerializationChallengeResponseDtoClass
 } from './dto/performance.dto';
 import {
-  DriftReportRequestSchema,
-  DriftReportRequestDto,
-  DriftReportRequest,
   DriftReportResponse,
   MLflowRegistryRequestSchema,
   MLflowRegistryRequestDto,

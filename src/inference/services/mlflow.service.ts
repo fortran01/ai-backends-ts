@@ -5,7 +5,22 @@ import { AxiosResponse } from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ort from 'onnxruntime-node';
-import { ClassifyRequestDto, ClassifyResponseDto } from '../dto/classify.dto';
+import { ClassifyRequestDto } from '../dto/classify.dto';
+
+/**
+ * MLflow API response interfaces
+ */
+interface MLflowModelVersion {
+  version: string;
+  current_stage: string;
+  run_id: string;
+  creation_timestamp: number;
+  source: string;
+}
+
+interface MLflowModelVersionResponse {
+  model_version: MLflowModelVersion;
+}
 
 /**
  * MLflow model registry service for centralized model lifecycle management
@@ -97,7 +112,7 @@ export class MlflowService {
     modelName: string, 
     version?: string, 
     stage?: string
-  ): Promise<Record<string, unknown>> {
+  ): Promise<MLflowModelVersionResponse> {
     try {
       // If stage is specified, get model by stage
       if (stage && stage !== 'None') {
@@ -168,7 +183,7 @@ export class MlflowService {
   public async downloadModelArtifacts(modelUri: string): Promise<string> {
     try {
       // Parse model URI to extract model name and version
-      const uriMatch = modelUri.match(/models:\/([^\/]+)\/(.+)/);
+      const uriMatch = modelUri.match(/models:\/([^/]+)\/(.+)/);
       if (!uriMatch) {
         throw new Error(`Invalid model URI format: ${modelUri}`);
       }
@@ -184,7 +199,7 @@ export class MlflowService {
 
       // Get model version details to find artifact URI
       const modelVersion = await this.getModelVersion(modelName, versionOrStage);
-      const artifactUri: string = (modelVersion.model_version as any)?.source || '';
+      const artifactUri: string = modelVersion.model_version.source || '';
 
       if (!artifactUri) {
         throw new Error(`No artifact URI found for model ${modelUri}`);
@@ -208,7 +223,7 @@ export class MlflowService {
         this.httpService.get(`${this.mlflowUrl}/get-artifact`, {
           params: {
             path: 'model.onnx',
-            run_uuid: (modelVersion.model_version as any)?.run_id
+            run_uuid: modelVersion.model_version.run_id
           },
           responseType: 'arraybuffer',
           timeout: 30000
@@ -354,11 +369,11 @@ export class MlflowService {
         registry_metadata: {
           model_uri: modelUri,
           model_name: modelName,
-          version: (modelVersion.model_version as any)?.version || 'latest',
-          stage: (modelVersion.model_version as any)?.current_stage || 'None',
-          run_id: (modelVersion.model_version as any)?.run_id || 'unknown',
-          creation_timestamp: (modelVersion.model_version as any)?.creation_timestamp || null,
-          source_path: (modelVersion.model_version as any)?.source || 'unknown'
+          version: modelVersion.model_version.version || 'latest',
+          stage: modelVersion.model_version.current_stage || 'None',
+          run_id: modelVersion.model_version.run_id || 'unknown',
+          creation_timestamp: modelVersion.model_version.creation_timestamp || null,
+          source_path: modelVersion.model_version.source || 'unknown'
         }
       };
 
