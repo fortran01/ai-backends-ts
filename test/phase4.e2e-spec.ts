@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import request from 'supertest';
+import { of, throwError } from 'rxjs';
+import { AxiosResponse } from 'axios';
 import { AppModule } from '../src/app.module';
 import { 
   ServiceAvailability, 
@@ -18,11 +21,93 @@ import {
 describe('Phase 4: Model Lifecycle Management & Monitoring (e2e)', () => {
   let app: INestApplication;
   let services: ServiceAvailability;
+  let httpService: jest.Mocked<HttpService>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider(HttpService)
+    .useValue({
+      get: jest.fn(),
+      post: jest.fn(),
+    })
+    .compile();
+
+    httpService = moduleFixture.get<HttpService>(HttpService) as jest.Mocked<HttpService>;
+    
+    // Mock successful Flask service responses
+    const mockDriftSimulationResponse: AxiosResponse = {
+      data: {
+        original_prediction: 'setosa',
+        shifted_prediction: 'versicolor',
+        drift_simulation: {
+          applied_shifts: {
+            sepal_length: {
+              original: 5.1,
+              shifted: 6.6,
+              bias_type: 'additive',
+              bias_amount: 1.5
+            },
+            petal_width: {
+              original: 0.2,
+              shifted: 0.26,
+              bias_type: 'multiplicative',
+              bias_factor: 1.3
+            }
+          },
+          prediction_changed: true,
+          confidence_change: -0.15
+        }
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {}
+    } as AxiosResponse;
+
+    const mockDriftReportResponse: AxiosResponse = {
+      data: {
+        drift_analysis: {
+          feature_drift: {
+            sepal_length: 0.12,
+            sepal_width: 0.08,
+            petal_length: 0.15,
+            petal_width: 0.22
+          },
+          overall_drift_score: 0.14,
+          drift_detected: false
+        },
+        data_summary: {
+          reference_samples: 150,
+          production_samples: 25,
+          analysis_period: '2024-08-05'
+        },
+        recommendations: [
+          'Monitor petal_width feature for potential drift',
+          'Collect more production data for accurate analysis'
+        ]
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {}
+    } as AxiosResponse;
+
+    // Setup mock responses
+    httpService.post.mockImplementation((url: string) => {
+      if (url.includes('/api/v1/classify-shifted')) {
+        return of(mockDriftSimulationResponse);
+      }
+      return throwError(() => new Error('Unexpected POST request'));
+    });
+
+    httpService.get.mockImplementation((url: string) => {
+      if (url.includes('/api/v1/drift-report')) {
+        return of(mockDriftReportResponse);
+      }
+      return throwError(() => new Error('Unexpected GET request'));
+    });
 
     app = moduleFixture.createNestApplication();
     
@@ -91,6 +176,16 @@ describe('Phase 4: Model Lifecycle Management & Monitoring (e2e)', () => {
       // Check applied shifts structure
       expect(response.body.drift_simulation.applied_shifts).toHaveProperty('sepal_length');
       expect(response.body.drift_simulation.applied_shifts).toHaveProperty('petal_width');
+      
+      // Verify that the Flask service was called with correct parameters
+      expect(httpService.post).toHaveBeenCalledWith(
+        'http://localhost:5001/api/v1/classify-shifted',
+        testRequest,
+        expect.objectContaining({
+          timeout: 30000,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
     });
 
     it('should handle invalid measurements for drift simulation', async () => {
@@ -112,18 +207,25 @@ describe('Phase 4: Model Lifecycle Management & Monitoring (e2e)', () => {
         .get('/api/v1/drift-report')
         .expect(200);
 
-      // Response should contain either drift analysis or error/warning about insufficient data
+      // Response should contain drift analysis structure
       expect(response.body).toBeDefined();
+      expect(response.body).toHaveProperty('drift_analysis');
+      expect(response.body).toHaveProperty('data_summary');
+      expect(response.body).toHaveProperty('recommendations');
       
-      if (response.body.error) {
-        // If insufficient data, should have helpful error message
-        expect(response.body).toHaveProperty('recommendation');
-      } else {
-        // If sufficient data, should have drift analysis structure
-        expect(response.body).toHaveProperty('drift_analysis');
-        expect(response.body).toHaveProperty('data_summary');
-        expect(response.body).toHaveProperty('recommendations');
-      }
+      // Verify drift analysis structure
+      expect(response.body.drift_analysis).toHaveProperty('feature_drift');
+      expect(response.body.drift_analysis).toHaveProperty('overall_drift_score');
+      expect(response.body.drift_analysis).toHaveProperty('drift_detected');
+      
+      // Verify that the Flask service was called
+      expect(httpService.get).toHaveBeenCalledWith(
+        'http://localhost:5001/api/v1/drift-report',
+        expect.objectContaining({
+          timeout: 30000,
+          params: { limit: 100 }
+        })
+      );
     });
   });
 
@@ -225,7 +327,7 @@ describe('Phase 4: Model Lifecycle Management & Monitoring (e2e)', () => {
       
       // Drift monitoring status should have monitoring info
       expect(response.body.drift_monitoring).toHaveProperty('monitoring_active');
-    });
+    }, 10000);
   });
 
   describe('Production Logging Integration', () => {
@@ -364,13 +466,9 @@ describe('Phase 4: Model Lifecycle Management & Monitoring (e2e)', () => {
           // Should fail validation for out-of-range values
           expect(response.status).toBe(400);
         } else {
-          // Should accept valid range values or handle service unavailability gracefully
-          if (response.status === 200) {
-            expect(response.body).toHaveProperty('drift_simulation');
-          } else {
-            // Service unavailable - should have error information
-            expect(response.body).toBeDefined();
-          }
+          // Should accept valid range values - with mocked service, should always return 200
+          expect(response.status).toBe(200);
+          expect(response.body).toHaveProperty('drift_simulation');
         }
       }
     });
@@ -428,6 +526,16 @@ describe('Phase 4: Model Lifecycle Management & Monitoring (e2e)', () => {
       // Should complete within reasonable time (10 seconds)
       expect(responseTime).toBeLessThan(10000);
       expect(response.body).toHaveProperty('drift_simulation');
+      
+      // Verify that the Flask service was called
+      expect(httpService.post).toHaveBeenCalledWith(
+        'http://localhost:5001/api/v1/classify-shifted',
+        testRequest,
+        expect.objectContaining({
+          timeout: 30000,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
     });
   });
 });
