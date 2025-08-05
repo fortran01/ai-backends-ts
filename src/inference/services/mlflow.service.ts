@@ -5,6 +5,7 @@ import { AxiosResponse } from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ort from 'onnxruntime-node';
+import { spawn } from 'child_process';
 import { ClassifyRequestDto } from '../dto/classify.dto';
 
 /**
@@ -127,7 +128,6 @@ except Exception as e:
     print(json.dumps(error_result))
 `;
 
-      const { spawn } = require('child_process');
       const pythonPath: string = '/Users/f/Library/CloudStorage/Dropbox/Projects/Inflection Group/be3/projects/ai-backends-py/venv/bin/python';
       
       return new Promise((resolve, reject) => {
@@ -232,7 +232,7 @@ except Exception as e:
       if (stage && stage !== 'None') {
         // First, check if it's an alias (case-insensitive)
         const aliases = registeredModel.aliases || [];
-        const targetAlias = aliases.find((alias: any) => 
+        const targetAlias = aliases.find((alias: { alias: string; version: string }) => 
           alias.alias.toLowerCase() === stage.toLowerCase()
         );
         
@@ -252,7 +252,7 @@ except Exception as e:
 
         // If not found as alias, check latest_versions for stage match
         const modelVersions = registeredModel.latest_versions || [];
-        const stageVersion = modelVersions.find((v: any) => 
+        const stageVersion = modelVersions.find((v: { current_stage?: string }) => 
           v.current_stage && v.current_stage.toLowerCase() === stage.toLowerCase()
         );
         
@@ -263,8 +263,8 @@ except Exception as e:
         // If no alias or stage found, throw specific error
         throw new NotFoundException(
           `No version found for model ${modelName} with stage/alias '${stage}'. ` +
-          `Available aliases: ${aliases.map((a: any) => a.alias).join(', ')} ` +
-          `Available stages: ${modelVersions.map((v: any) => v.current_stage).join(', ')}`
+          `Available aliases: ${aliases.map((a: { alias: string }) => a.alias).join(', ')} ` +
+          `Available stages: ${modelVersions.map((v: { current_stage?: string }) => v.current_stage).join(', ')}`
         );
       }
 
@@ -493,7 +493,7 @@ except Exception as e:
       let predictedClassIndex: number;
 
       // Following the coding guidelines: Validate tensor objects before accessing properties
-      const validateTensor = (tensor: any, tensorName: string): { isValid: boolean; error?: string } => {
+      const validateTensor = (tensor: ort.Tensor | undefined, tensorName: string): { isValid: boolean; error?: string } => {
         if (!tensor) {
           return { isValid: false, error: `${tensorName} tensor is undefined or null` };
         }
@@ -532,7 +532,7 @@ except Exception as e:
           probabilityTensor = probabilityOutput;
           this.logger.log('Using direct output name access: label, probabilities');
         } else {
-          this.logger.warn(`Direct name access validation failed: ${labelValidation.error || probValidation.error}`);
+          this.logger.warn(`Direct name access validation failed: ${labelValidation.error ?? probValidation.error}`);
         }
       }
       
