@@ -6,6 +6,21 @@ import * as path from 'path';
 import { ClassifyRequestDto, ClassifyResponseDto } from '../dto/classify.dto';
 
 /**
+ * Type guard to check if error has HTTP-like properties
+ */
+interface HttpError {
+  code?: string;
+  response?: {
+    data?: unknown;
+  };
+  message?: string;
+}
+
+function isHttpError(error: unknown): error is HttpError {
+  return typeof error === 'object' && error !== null;
+}
+
+/**
  * Drift monitoring service for production model surveillance
  * 
  * Following the coding guidelines: Integrates with ai-backends-py Flask app
@@ -186,7 +201,7 @@ export class DriftMonitoringService {
       this.logger.error('Failed to generate drift report via Python Flask service', error);
       
       // Check if it's a connection error
-      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      if (isHttpError(error) && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
         return {
           error: 'Python Flask service unavailable',
           details: `Could not connect to ${this.pythonFlaskUrl}`,
@@ -196,13 +211,13 @@ export class DriftMonitoringService {
       }
 
       // Return error response from Python service if available
-      if (error.response?.data) {
-        return error.response.data;
+      if (isHttpError(error) && error.response?.data) {
+        return error.response.data as Record<string, unknown>;
       }
 
       return {
         error: 'Drift analysis failed',
-        details: error.message || 'Unknown error',
+        details: isHttpError(error) ? (error.message ?? 'Unknown error') : 'Unknown error',
         recommendation: 'Check if Python Flask service is running on port 5001'
       };
     }
@@ -236,7 +251,7 @@ export class DriftMonitoringService {
       this.logger.error('Failed to generate drift simulation via Python Flask service', error);
       
       // Check if it's a connection error
-      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      if (isHttpError(error) && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
         return {
           error: 'Python Flask service unavailable',
           details: `Could not connect to ${this.pythonFlaskUrl}`,
@@ -246,13 +261,13 @@ export class DriftMonitoringService {
       }
 
       // Return error response from Python service if available
-      if (error.response?.data) {
-        return error.response.data;
+      if (isHttpError(error) && error.response?.data) {
+        return error.response.data as Record<string, unknown>;
       }
 
       return {
         error: 'Drift simulation failed',
-        details: error.message || 'Unknown error',
+        details: isHttpError(error) ? (error.message ?? 'Unknown error') : 'Unknown error',
         recommendation: 'Check if Python Flask service is running on port 5001'
       };
     }
