@@ -4,17 +4,12 @@
   "main": "index.js",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "lint": "eslint \"src/**/*.ts\" --fix",
     "batch-inference": "ts-node scripts/batch-inference.ts",
     "grpc-server": "ts-node grpc-server.ts",
     "http-server": "ts-node http-server.ts"
@@ -51,11 +46,8 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",
-    "@nestjs/testing": "^11.1.5",
     "@types/express": "^4.17.17",
-    "@types/jest": "^29.5.5",
     "@types/node": "^24.1.0",
-    "@types/supertest": "^6.0.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "commander": "^12.1.0",
@@ -63,28 +55,8 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "grpc_tools_node_protoc_ts": "^5.3.3",
-    "jest": "^29.7.0",
     "nodemon": "^3.1.10",
     "prettier": "^3.0.0",
-    "supertest": "^7.0.0",
-    "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }
