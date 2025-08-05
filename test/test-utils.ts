@@ -22,10 +22,10 @@ export interface ServiceAvailability {
  */
 export function isCIEnvironment(): boolean {
   return !!(
-    process.env.CI ||
-    process.env.GITHUB_ACTIONS ||
-    process.env.JENKINS_URL ||
-    process.env.TRAVIS ||
+    process.env.CI ??
+    process.env.GITHUB_ACTIONS ??
+    process.env.JENKINS_URL ??
+    process.env.TRAVIS ??
     process.env.CIRCLECI
   );
 }
@@ -111,6 +111,7 @@ export async function checkServiceAvailability(app: INestApplication): Promise<S
     }
 
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn('Service availability check failed:', error instanceof Error ? error.message : String(error));
   }
 
@@ -126,6 +127,7 @@ export function skipIfServiceUnavailable(
   testDescription: string
 ): void {
   if (!services[serviceName]) {
+    // eslint-disable-next-line no-console
     console.log(`⚠️  Skipping test "${testDescription}" - ${serviceName} service unavailable`);
   }
 }
